@@ -4,6 +4,7 @@ import hmac
 import base64
 import json
 from datetime import datetime, timedelta
+from django.utils import timezone
 from django.db import models
 from django.conf import settings
 
@@ -40,7 +41,7 @@ class GreenPassCode(models.Model):
     @classmethod
     def generate_code(cls, user, valid_minutes=5):
         code_id = uuid.uuid4()
-        now = datetime.now()
+        now = timezone.now()
         expires_at = now + timedelta(minutes=valid_minutes)
 
         payload = {
@@ -92,7 +93,7 @@ class GreenPassCode(models.Model):
             payload = json.loads(payload_json)
 
             expires_at = datetime.fromisoformat(payload['expires_at'])
-            if datetime.now() > expires_at:
+            if timezone.now() > expires_at:
                 return False, '通行码已过期'
 
             try:
@@ -108,7 +109,7 @@ class GreenPassCode(models.Model):
                 return False, '通行码用户信息不匹配'
 
             pass_code.status = 1
-            pass_code.used_at = datetime.now()
+            pass_code.used_at = timezone.now()
             if verifier:
                 pass_code.used_by = verifier
             pass_code.save()

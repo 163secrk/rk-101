@@ -16,8 +16,8 @@ class GreenPassCodeSerializer(serializers.ModelSerializer):
         return f'{obj.encrypted_data}.{obj.signature}'
 
     def get_expires_in(self, obj):
-        from datetime import datetime
-        now = datetime.now()
+        from django.utils import timezone
+        now = timezone.now()
         if obj.expires_at > now:
             delta = obj.expires_at - now
             return int(delta.total_seconds())

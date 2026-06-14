@@ -141,7 +141,7 @@ export default function GreenPassCode() {
                 <div className="qr-expire">
                   <IconClockCircle style={{ marginRight: 4 }} />
                   <span>
-                    有效期: <Text strong>{formatTime(expiresIn)}</Text>
+                    有效期: <Text bold>{formatTime(expiresIn)}</Text>
                   </span>
                 </div>
               </>
