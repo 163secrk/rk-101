@@ -1,13 +1,19 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenRefreshView
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
-    UserProfileSerializer, ChangePasswordSerializer
+    UserProfileSerializer, ChangePasswordSerializer,
+    InvitationCodeSerializer, InvitationCodeCreateSerializer
 )
-from .models import User
+from .models import User, InvitationCode
+
+
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
 
 
 class RegisterView(generics.CreateAPIView):
@@ -126,3 +132,70 @@ class LogoutView(APIView):
             'message': '退出成功',
             'data': None
         })
+
+
+class InvitationCodeListView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    queryset = InvitationCode.objects.all()
+    serializer_class = InvitationCodeSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return InvitationCodeCreateSerializer
+        return InvitationCodeSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response({
+            'code': 0,
+            'message': '创建成功',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+
+class InvitationCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    queryset = InvitationCode.objects.all()
+    serializer_class = InvitationCodeSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_used:
+            return Response({
+                'code': 400,
+                'message': '已使用的邀请码无法删除',
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+        self.perform_destroy(instance)
+        return Response({
+            'code': 0,
+            'message': '删除成功',
+            'data': None
+        })
+
+    def update(self, request, *args, **kwargs):
+        return Response({
+            'code': 405,
+            'message': '不支持修改邀请码',
+            'data': None
+        }, status=status.HTTP_405_METHOD_NOT_ALLOWED)

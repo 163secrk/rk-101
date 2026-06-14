@@ -1,8 +1,9 @@
 import re
 from django.contrib.auth import authenticate
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User
+from .models import User, InvitationCode
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -10,10 +11,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         'min_length': '密码长度至少6位'
     })
     confirm_password = serializers.CharField(write_only=True, min_length=6)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, required=False, default='resident')
+    invitation_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'phone', 'password', 'confirm_password', 'email', 'nickname', 'community', 'address']
+        fields = ['id', 'username', 'phone', 'password', 'confirm_password', 'email', 'nickname', 'community', 'address', 'role', 'invitation_code']
         extra_kwargs = {
             'username': {'min_length': 3, 'max_length': 20},
             'phone': {'required': True},
@@ -42,14 +45,52 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
             raise serializers.ValidationError({'confirm_password': '两次输入的密码不一致'})
+
+        role = attrs.get('role', 'resident')
+        invitation_code = attrs.get('invitation_code', '')
+
+        if role in ['admin', 'inspector', 'collector']:
+            if not invitation_code:
+                raise serializers.ValidationError({'invitation_code': '注册该角色需要邀请码'})
+            
+            try:
+                code_obj = InvitationCode.objects.get(code=invitation_code)
+            except InvitationCode.DoesNotExist:
+                raise serializers.ValidationError({'invitation_code': '邀请码不存在'})
+
+            if code_obj.role != role:
+                raise serializers.ValidationError({'invitation_code': f'邀请码与注册角色不匹配，该邀请码仅用于注册{code_obj.get_role_display()}'})
+
+            if not code_obj.is_valid():
+                if code_obj.is_used:
+                    raise serializers.ValidationError({'invitation_code': '邀请码已被使用'})
+                elif code_obj.expires_at <= timezone.now():
+                    raise serializers.ValidationError({'invitation_code': '邀请码已过期'})
+
+            attrs['_invitation_code_obj'] = code_obj
+
+        elif role == 'resident':
+            pass
+        else:
+            raise serializers.ValidationError({'role': '无效的角色类型'})
+
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
+        invitation_code_obj = validated_data.pop('_invitation_code_obj', None)
+        validated_data.pop('invitation_code', None)
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        if invitation_code_obj:
+            invitation_code_obj.is_used = True
+            invitation_code_obj.used_by = user
+            invitation_code_obj.used_at = timezone.now()
+            invitation_code_obj.save()
+
         return user
 
 
@@ -128,3 +169,45 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs['old_password'] == attrs['new_password']:
             raise serializers.ValidationError({'new_password': '新密码不能与旧密码相同'})
         return attrs
+
+
+class InvitationCodeSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+    used_by_name = serializers.SerializerMethodField()
+    is_valid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InvitationCode
+        fields = ['id', 'code', 'role', 'created_by', 'created_by_name', 'used_by', 'used_by_name',
+                  'is_used', 'expires_at', 'created_at', 'used_at', 'is_valid']
+        read_only_fields = ['id', 'created_by', 'created_by_name', 'used_by', 'used_by_name',
+                            'is_used', 'created_at', 'used_at', 'is_valid']
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.nickname if obj.created_by else None
+
+    def get_used_by_name(self, obj):
+        return obj.used_by.nickname if obj.used_by else None
+
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+
+
+class InvitationCodeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvitationCode
+        fields = ['code', 'role', 'expires_at']
+        extra_kwargs = {
+            'code': {'required': True},
+            'role': {'required': True},
+            'expires_at': {'required': True},
+        }
+
+    def validate_code(self, value):
+        if InvitationCode.objects.filter(code=value).exists():
+            raise serializers.ValidationError('邀请码已存在')
+        return value
+
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)

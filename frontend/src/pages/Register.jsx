@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Form, Input, Button, Message, Link } from '@arco-design/web-react'
+import { Card, Form, Input, Button, Message, Link, Select, Alert } from '@arco-design/web-react'
 import {
   IconUser,
   IconPhone,
@@ -7,17 +7,30 @@ import {
   IconEmail,
   IconLocation,
   IconHome,
+  IconTag,
+  IconSafe,
 } from '@arco-design/web-react/icon'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { register } from '../api/user'
 import './auth-pages.less'
 
 const FormItem = Form.Item
+const Option = Select.Option
+
+const roleOptions = [
+  { value: 'resident', label: '居民（默认）', desc: '普通社区居民，可进行垃圾分类投放获取积分' },
+  { value: 'collector', label: '收集员', desc: '负责收集和管理垃圾投放，需要邀请码' },
+  { value: 'inspector', label: '巡检员', desc: '负责巡检和问题上报，需要邀请码' },
+  { value: 'admin', label: '管理员', desc: '系统管理员，拥有全部权限，需要邀请码' },
+]
 
 export default function Register() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
+  const [selectedRole, setSelectedRole] = useState('resident')
+
+  const needInvitationCode = ['admin', 'inspector', 'collector'].includes(selectedRole)
 
   const handleSubmit = async (values) => {
     setLoading(true)
@@ -30,8 +43,12 @@ export default function Register() {
         nickname: values.nickname,
         community: values.community || '',
         address: values.address || '',
+        role: values.role || 'resident',
       }
       if (values.email) payload.email = values.email
+      if (needInvitationCode && values.invitation_code) {
+        payload.invitation_code = values.invitation_code
+      }
       const res = await register(payload)
       const { tokens, user } = res.data
       localStorage.setItem('access_token', tokens.access)
@@ -138,6 +155,51 @@ export default function Register() {
               />
             </FormItem>
           </div>
+          <FormItem
+            field="role"
+            label="注册角色"
+            initialValue="resident"
+          >
+            <Select
+              prefix={<IconTag style={{ color: '#c9cdd4' }} />}
+              placeholder="请选择注册角色"
+              size="large"
+              onChange={(value) => setSelectedRole(value)}
+            >
+              {roleOptions.map((option) => (
+                <Option key={option.value} value={option.value}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 500 }}>{option.label}</span>
+                    <span style={{ fontSize: 12, color: '#86909c' }}>{option.desc}</span>
+                  </div>
+                </Option>
+              ))}
+            </Select>
+          </FormItem>
+          {needInvitationCode && (
+            <>
+              <Alert
+                type="warning"
+                content="注册该角色需要有效的邀请码，请向管理员获取"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              <FormItem
+                field="invitation_code"
+                label="邀请码"
+                rules={[
+                  { required: true, message: '请输入邀请码' },
+                ]}
+              >
+                <Input
+                  prefix={<IconSafe style={{ color: '#c9cdd4' }} />}
+                  placeholder="请输入邀请码"
+                  size="large"
+                  maxLength={50}
+                />
+              </FormItem>
+            </>
+          )}
           <div className="form-row">
             <FormItem
               field="password"

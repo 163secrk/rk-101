@@ -13,3 +13,9 @@ export const updateProfile = (data) => request.put('/users/profile/', data)
 export const changePassword = (data) => request.post('/users/password/change/', data)
 
 export const refreshToken = (data) => request.post('/users/refresh/', data)
+
+export const getInvitationCodes = () => request.get('/users/invitation-codes/')
+
+export const createInvitationCode = (data) => request.post('/users/invitation-codes/', data)
+
+export const deleteInvitationCode = (id) => request.delete(`/users/invitation-codes/${id}/`)

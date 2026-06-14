@@ -1,5 +1,34 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
+
+
+class InvitationCode(models.Model):
+    ROLE_CHOICES = [
+        ('inspector', '巡检员'),
+        ('admin', '管理员'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, verbose_name='邀请码')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, verbose_name='角色')
+    created_by = models.ForeignKey('User', on_delete=models.CASCADE, related_name='created_codes', verbose_name='创建人', null=True, blank=True)
+    used_by = models.ForeignKey('User', on_delete=models.SET_NULL, related_name='used_code', verbose_name='使用人', null=True, blank=True)
+    is_used = models.BooleanField(default=False, verbose_name='是否已使用')
+    expires_at = models.DateTimeField(verbose_name='过期时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name='使用时间')
+
+    class Meta:
+        db_table = 'gt_invitation_code'
+        verbose_name = '邀请码'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code}({self.get_role_display()})'
+
+    def is_valid(self):
+        return not self.is_used and self.expires_at > timezone.now()
 
 
 class User(AbstractUser):
