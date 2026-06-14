@@ -49,3 +49,11 @@ export const getUserAchievements = () => request.get('/points/achievements/mine/
 export const getCarbonFootprint = (params) => request.get('/points/carbon-footprint/', { params })
 
 export const getCommunityDashboard = () => request.get('/points/community/dashboard/')
+
+export const getInspectionList = (params) => request.get('/points/inspection/', { params })
+
+export const getInspectionDetail = (id) => request.get(`/points/inspection/${id}/`)
+
+export const createInspection = (data) => request.post('/points/inspection/create/', data)
+
+export const handleInspection = (id, data) => request.post(`/points/inspection/${id}/handle/`, data)

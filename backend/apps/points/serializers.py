@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     GreenPassCode, PointAccount, PointRecord, DeliveryRecord, SmartBin,
-    ExchangeGoods, ExchangeOrder, Achievement, UserAchievement
+    ExchangeGoods, ExchangeOrder, Achievement, UserAchievement, InspectionReport
 )
 
 
@@ -292,3 +292,140 @@ class UserAchievementSerializer(serializers.ModelSerializer):
 
     def get_achievement_detail(self, obj):
         return AchievementSerializer(obj.achievement).data
+
+
+class InspectionReportSerializer(serializers.ModelSerializer):
+    type_name = serializers.SerializerMethodField()
+    status_name = serializers.SerializerMethodField()
+    reporter_info = serializers.SerializerMethodField()
+    handler_info = serializers.SerializerMethodField()
+    bin_info = serializers.SerializerMethodField()
+    delivery_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InspectionReport
+        fields = '__all__'
+        read_only_fields = ['reporter', 'handler', 'status', 'handle_remark',
+                            'points_reward', 'point_record', 'created_at', 'handled_at']
+
+    def get_type_name(self, obj):
+        return obj.get_type_display()
+
+    def get_status_name(self, obj):
+        return obj.get_status_display()
+
+    def get_reporter_info(self, obj):
+        user = obj.reporter
+        if not user:
+            return None
+        return {
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'avatar': user.avatar,
+            'phone': user.phone,
+            'role': user.role,
+        }
+
+    def get_handler_info(self, obj):
+        user = obj.handler
+        if not user:
+            return None
+        return {
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'avatar': user.avatar,
+            'role': user.role,
+        }
+
+    def get_bin_info(self, obj):
+        bin_obj = obj.bin
+        if not bin_obj:
+            return None
+        return {
+            'id': bin_obj.id,
+            'bin_code': bin_obj.bin_code,
+            'name': bin_obj.name,
+            'location': bin_obj.location,
+            'community': bin_obj.community,
+            'category': bin_obj.category,
+            'category_name': bin_obj.get_category_display(),
+        }
+
+    def get_delivery_info(self, obj):
+        delivery = obj.delivery
+        if not delivery:
+            return None
+        return {
+            'id': delivery.id,
+            'category': delivery.category,
+            'category_name': delivery.get_category_display(),
+            'weight': delivery.weight,
+            'points_earned': delivery.points_earned,
+            'status': delivery.status,
+            'status_name': delivery.get_status_display(),
+            'created_at': delivery.created_at.isoformat() if delivery.created_at else None,
+        }
+
+
+class InspectionCreateSerializer(serializers.Serializer):
+    bin_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+    delivery_id = serializers.IntegerField(required=False, allow_null=True, default=None)
+    type = serializers.ChoiceField(
+        choices=InspectionReport.TYPE_CHOICES,
+        required=True,
+        error_messages={'required': '请选择异常类型'}
+    )
+    description = serializers.CharField(
+        required=True,
+        min_length=5,
+        max_length=2000,
+        error_messages={
+            'required': '请填写异常描述',
+            'min_length': '异常描述不能少于5个字',
+            'max_length': '异常描述不能超过2000个字',
+        }
+    )
+    images = serializers.ListField(
+        child=serializers.CharField(max_length=500),
+        required=False,
+        default=list,
+        max_length=9,
+        error_messages={'max_length': '最多上传9张照片'}
+    )
+    location = serializers.CharField(required=False, allow_blank=True, default='', max_length=255)
+
+    def validate(self, attrs):
+        bin_id = attrs.get('bin_id')
+        delivery_id = attrs.get('delivery_id')
+
+        if bin_id:
+            try:
+                bin_obj = SmartBin.objects.get(pk=bin_id)
+                attrs['bin_obj'] = bin_obj
+            except SmartBin.DoesNotExist:
+                raise serializers.ValidationError({'bin_id': '投放点不存在'})
+
+        if delivery_id:
+            try:
+                delivery = DeliveryRecord.objects.get(pk=delivery_id)
+                attrs['delivery_obj'] = delivery
+            except DeliveryRecord.DoesNotExist:
+                raise serializers.ValidationError({'delivery_id': '投递记录不存在'})
+
+        return attrs
+
+
+class InspectionHandleSerializer(serializers.Serializer):
+    ACTION_CHOICES = [
+        ('start', '开始处理'),
+        ('resolve', '处理完成'),
+        ('reject', '驳回'),
+    ]
+    action = serializers.ChoiceField(choices=ACTION_CHOICES, required=True, error_messages={
+        'required': '请选择处理操作',
+        'invalid_choice': '无效的处理操作'
+    })
+    remark = serializers.CharField(required=False, allow_blank=True, default='', max_length=1000)
+    points_reward = serializers.IntegerField(required=False, default=0, min_value=0, max_value=10000)

@@ -651,6 +651,7 @@ class InspectionReport(models.Model):
     reporter = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='reported_inspections', verbose_name='上报人')
     handler = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='handled_inspections', verbose_name='处理人')
     bin = models.ForeignKey(SmartBin, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections', verbose_name='关联投放点')
+    delivery = models.ForeignKey(DeliveryRecord, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspection_reports', verbose_name='关联投递记录')
     type = models.CharField(max_length=30, choices=TYPE_CHOICES, verbose_name='异常类型')
     description = models.TextField(verbose_name='异常描述')
     images = models.JSONField(default=list, blank=True, verbose_name='照片列表')
@@ -670,3 +671,43 @@ class InspectionReport(models.Model):
 
     def __str__(self):
         return f'{self.type} - {self.status}'
+
+    def start_handle(self, handler):
+        if self.status != 0:
+            return False, '当前状态不支持开始处理'
+        self.status = 1
+        self.handler = handler
+        self.save()
+        return True, '已开始处理'
+
+    def resolve(self, handler, remark='', points_reward=0):
+        from django.db import transaction
+        if self.status not in [0, 1]:
+            return False, '当前状态不支持完成处理'
+        with transaction.atomic():
+            self.status = 2
+            self.handler = handler
+            self.handle_remark = remark
+            self.points_reward = points_reward
+            self.handled_at = timezone.now()
+            if points_reward > 0:
+                account, _ = PointAccount.objects.get_or_create(user=self.reporter)
+                point_record = account.add_points(
+                    points=points_reward,
+                    source='activity',
+                    related_id=str(self.id),
+                    remark=f'巡检异常上报奖励'
+                )
+                self.point_record = point_record
+            self.save()
+        return True, '处理完成'
+
+    def reject(self, handler, remark='异常描述不清晰或证据不足'):
+        if self.status not in [0, 1]:
+            return False, '当前状态不支持驳回'
+        self.status = 3
+        self.handler = handler
+        self.handle_remark = remark
+        self.handled_at = timezone.now()
+        self.save()
+        return True, '已驳回'

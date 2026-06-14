@@ -9,7 +9,9 @@ from .views import (
     ExchangeCreateView, ExchangeOrderListView,
     ExchangeOrderDetailView, ExchangeOrderCancelView,
     AchievementListView, UserAchievementListView,
-    CarbonFootprintTimelineView, CommunityDashboardView
+    CarbonFootprintTimelineView, CommunityDashboardView,
+    InspectionReportListView, InspectionReportCreateView,
+    InspectionReportDetailView, InspectionReportHandleView
 )
 
 urlpatterns = [
@@ -37,4 +39,8 @@ urlpatterns = [
     path('achievements/mine/', UserAchievementListView.as_view(), name='user-achievement-list'),
     path('carbon-footprint/', CarbonFootprintTimelineView.as_view(), name='carbon-footprint-timeline'),
     path('community/dashboard/', CommunityDashboardView.as_view(), name='community-dashboard'),
+    path('inspection/', InspectionReportListView.as_view(), name='inspection-list'),
+    path('inspection/create/', InspectionReportCreateView.as_view(), name='inspection-create'),
+    path('inspection/<int:pk>/', InspectionReportDetailView.as_view(), name='inspection-detail'),
+    path('inspection/<int:pk>/handle/', InspectionReportHandleView.as_view(), name='inspection-handle'),
 ]

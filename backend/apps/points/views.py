@@ -8,14 +8,15 @@ from django.utils import timezone
 from .models import (
     GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord,
     POINTS_PER_KG_CONFIG, LEVEL_CONFIG, ExchangeGoods, ExchangeOrder,
-    Achievement, UserAchievement
+    Achievement, UserAchievement, InspectionReport
 )
 from .serializers import (
     GreenPassCodeSerializer, PassCodeVerifySerializer,
     SmartBinSerializer, DeliveryRecordSerializer, DeliveryCreateSerializer,
     PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer,
     ExchangeGoodsSerializer, ExchangeOrderSerializer, ExchangeCreateSerializer,
-    AchievementSerializer, UserAchievementSerializer
+    AchievementSerializer, UserAchievementSerializer,
+    InspectionReportSerializer, InspectionCreateSerializer, InspectionHandleSerializer
 )
 from rest_framework.permissions import BasePermission
 
@@ -966,4 +967,178 @@ class CommunityDashboardView(APIView):
                 'building_ranking': ranking_list,
                 'category_breakdown': category_data,
             }
+        })
+
+
+class InspectionReportListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = InspectionReportSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            queryset = InspectionReport.objects.all()
+        elif user.role == 'inspector':
+            queryset = InspectionReport.objects.filter(
+                models.Q(reporter=user) | models.Q(status__in=[0, 1])
+            )
+        else:
+            queryset = InspectionReport.objects.filter(reporter=user)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        type_filter = self.request.query_params.get('type')
+        if type_filter:
+            queryset = queryset.filter(type=type_filter)
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = queryset.count()
+        queryset = queryset[start:end]
+        serializer = self.get_serializer(queryset, many=True)
+
+        pending_count = InspectionReport.objects.filter(status=0).count()
+        processing_count = InspectionReport.objects.filter(status=1).count()
+        resolved_count = InspectionReport.objects.filter(status=2).count()
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'stats': {
+                    'pending_count': pending_count,
+                    'processing_count': processing_count,
+                    'resolved_count': resolved_count,
+                }
+            }
+        })
+
+
+class InspectionReportCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsInspector]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = InspectionCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            errors = {}
+            for field, messages in serializer.errors.items():
+                errors[field] = messages[0] if messages else '参数错误'
+            return Response({
+                'code': 400,
+                'message': '参数校验失败',
+                'data': errors
+            })
+        data = serializer.validated_data
+
+        report = InspectionReport.objects.create(
+            reporter=request.user,
+            bin=data.get('bin_obj'),
+            delivery=data.get('delivery_obj'),
+            type=data['type'],
+            description=data['description'],
+            images=data.get('images', []),
+            location=data.get('location', ''),
+        )
+
+        if data.get('delivery_obj') and not data.get('bin_obj'):
+            report.bin = data['delivery_obj'].bin
+            report.save()
+
+        result_serializer = InspectionReportSerializer(report)
+        return Response({
+            'code': 0,
+            'message': '上报成功，等待管理员处理',
+            'data': result_serializer.data
+        })
+
+
+class InspectionReportDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            report = InspectionReport.objects.get(pk=pk)
+        except InspectionReport.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '上报记录不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.role == 'resident' and report.reporter_id != request.user.id:
+            return Response({
+                'code': 403,
+                'message': '无权查看此记录',
+                'data': None
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if request.user.role == 'inspector' and report.reporter_id != request.user.id and report.status not in [0, 1]:
+            return Response({
+                'code': 403,
+                'message': '无权查看此记录',
+                'data': None
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = InspectionReportSerializer(report)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+
+
+class InspectionReportHandleView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            report = InspectionReport.objects.get(pk=pk)
+        except InspectionReport.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '上报记录不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = InspectionHandleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        action = serializer.validated_data['action']
+        remark = serializer.validated_data.get('remark', '')
+        points_reward = serializer.validated_data.get('points_reward', 0)
+
+        if action == 'start':
+            success, msg = report.start_handle(handler=request.user)
+        elif action == 'resolve':
+            success, msg = report.resolve(handler=request.user, remark=remark, points_reward=points_reward)
+        elif action == 'reject':
+            success, msg = report.reject(handler=request.user, remark=remark or '异常描述不清晰或证据不足')
+        else:
+            return Response({
+                'code': 400,
+                'message': '无效的操作类型',
+                'data': None
+            })
+
+        if not success:
+            return Response({
+                'code': 400,
+                'message': msg,
+                'data': None
+            })
+
+        result_serializer = InspectionReportSerializer(report)
+        return Response({
+            'code': 0,
+            'message': msg,
+            'data': result_serializer.data
         })
