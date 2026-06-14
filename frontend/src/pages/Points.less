@@ -1,0 +1,104 @@
+.points-page {
+  .points-summary-card {
+    margin-bottom: 16px;
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+
+      .card-icon {
+        font-size: 20px;
+      }
+
+      .card-title {
+        font-size: 14px;
+        color: #4e5969;
+        font-weight: 500;
+      }
+    }
+
+    .balance-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #FF7D00;
+      line-height: 1.2;
+      margin-bottom: 8px;
+
+      &.earn {
+        color: #00B42A;
+      }
+
+      &.spend {
+        color: #F53F3F;
+      }
+
+      .balance-unit {
+        font-size: 14px;
+        font-weight: normal;
+        margin-left: 4px;
+        color: #86909c;
+      }
+    }
+
+    .balance-desc {
+      font-size: 12px;
+      color: #86909c;
+    }
+  }
+
+  .level-card {
+    margin-bottom: 16px;
+
+    .level-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .level-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        .level-icon {
+          font-size: 40px;
+          color: #FF7D00;
+        }
+
+        .level-name {
+          font-size: 20px;
+          font-weight: bold;
+          color: #1d2129;
+          margin-bottom: 4px;
+        }
+
+        .level-desc {
+          font-size: 13px;
+          color: #86909c;
+        }
+      }
+
+      .level-progress-wrapper {
+        width: 300px;
+      }
+    }
+  }
+
+  .records-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .filter-label {
+      font-size: 13px;
+      color: #4e5969;
+    }
+
+    .records-summary {
+      display: flex;
+      gap: 8px;
+    }
+  }
+}

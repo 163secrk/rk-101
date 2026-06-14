@@ -3,7 +3,7 @@ import {
   Card, Tabs, Grid, Tag, Button, Modal, Form, Input, InputNumber,
   Message, Empty, Spin, Avatar, Descriptions, Statistic, Space
 } from '@arco-design/web-react'
-import { IconGift, IconStar, IconShoppingCart } from '@arco-design/web-react/icon'
+import { IconGift, IconStar, IconPlus } from '@arco-design/web-react/icon'
 import {
   getGoodsList, getPointAccount, createExchange, getExchangeOrders,
   cancelExchangeOrder
@@ -242,7 +242,7 @@ export default function Exchange() {
                         e.stopPropagation()
                         handleExchange(goods)
                       }}
-                      icon={<IconShoppingCart />}
+                      icon={<IconPlus />}
                     >
                       立即兑换
                     </Button>
