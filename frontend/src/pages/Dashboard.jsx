@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Card, Grid, Statistic, Avatar, Tag, Button } from '@arco-design/web-react'
+import {
+  IconDelete,
+  IconScan,
+  IconGift,
+  IconTrophy,
+} from '@arco-design/web-react/icon'
 import ReactECharts from 'echarts-for-react'
 import './Dashboard.less'
 
@@ -92,10 +98,10 @@ export default function Dashboard() {
   }
 
   const quickActions = [
-    { key: 'delivery', name: '投放登记', icon: '📤', color: '#00B42A', bg: '#e8f5e9' },
-    { key: 'scan', name: '扫码投放', icon: '📱', color: '#165DFF', bg: '#e8f3ff' },
-    { key: 'exchange', name: '积分兑换', icon: '🎁', color: '#FF7D00', bg: '#fff7e8' },
-    { key: 'achievement', name: '成就中心', icon: '🏆', color: '#722ED1', bg: '#f3e8ff' },
+    { key: 'delivery', name: '投放登记', icon: IconDelete, color: '#00B42A', bg: '#e8f5e9' },
+    { key: 'scan', name: '扫码投放', icon: IconScan, color: '#165DFF', bg: '#e8f3ff' },
+    { key: 'exchange', name: '积分兑换', icon: IconGift, color: '#FF7D00', bg: '#fff7e8' },
+    { key: 'achievement', name: '成就中心', icon: IconTrophy, color: '#722ED1', bg: '#f3e8ff' },
   ]
 
   return (
@@ -178,17 +184,20 @@ export default function Dashboard() {
 
       <div className="section-title">快捷操作</div>
       <div className="quick-actions">
-        {quickActions.map((item) => (
-          <div key={item.key} className="action-card">
-            <div
-              className="action-icon"
-              style={{ backgroundColor: item.bg, color: item.color }}
-            >
-              <span style={{ fontSize: 24 }}>{item.icon}</span>
+        {quickActions.map((item) => {
+          const IconComponent = item.icon
+          return (
+            <div key={item.key} className="action-card">
+              <div
+                className="action-icon"
+                style={{ backgroundColor: item.bg, color: item.color }}
+              >
+                <IconComponent style={{ fontSize: 24 }} />
+              </div>
+              <div className="action-name">{item.name}</div>
             </div>
-            <div className="action-name">{item.name}</div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <Row gutter={16}>

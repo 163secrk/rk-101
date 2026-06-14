@@ -1,5 +1,13 @@
 import React, { useState } from 'react'
 import { Card, Form, Input, Button, Message, Link } from '@arco-design/web-react'
+import {
+  IconUser,
+  IconPhone,
+  IconLock,
+  IconEmail,
+  IconLocation,
+  IconHome,
+} from '@arco-design/web-react/icon'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { register } from '../api/user'
 import './auth-pages.less'
@@ -65,7 +73,7 @@ export default function Register() {
               ]}
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>👤</span>}
+                prefix={<IconUser style={{ color: '#c9cdd4' }} />}
                 placeholder="请输入用户名"
                 size="large"
               />
@@ -76,7 +84,7 @@ export default function Register() {
               rules={[{ maxLength: 20, message: '最多20个字符' }]}
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>👤</span>}
+                prefix={<IconUser style={{ color: '#c9cdd4' }} />}
                 placeholder="请输入昵称（可选）"
                 size="large"
               />
@@ -91,7 +99,7 @@ export default function Register() {
             ]}
           >
             <Input
-              prefix={<span style={{ color: '#c9cdd4' }}>📱</span>}
+              prefix={<IconPhone style={{ color: '#c9cdd4' }} />}
               placeholder="请输入手机号"
               size="large"
               maxLength={11}
@@ -103,7 +111,7 @@ export default function Register() {
             rules={[{ type: 'email', message: '邮箱格式不正确' }]}
           >
             <Input
-              prefix={<span style={{ color: '#c9cdd4' }}>📧</span>}
+              prefix={<IconEmail style={{ color: '#c9cdd4' }} />}
               placeholder="请输入邮箱"
               size="large"
             />
@@ -114,7 +122,7 @@ export default function Register() {
               label="所在社区"
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>🏘️</span>}
+                prefix={<IconHome style={{ color: '#c9cdd4' }} />}
                 placeholder="如：阳光花园社区"
                 size="large"
               />
@@ -124,7 +132,7 @@ export default function Register() {
               label="详细地址"
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>📍</span>}
+                prefix={<IconLocation style={{ color: '#c9cdd4' }} />}
                 placeholder="楼栋门牌号（可选）"
                 size="large"
               />
@@ -140,7 +148,7 @@ export default function Register() {
               ]}
             >
               <Input.Password
-                prefix={<span style={{ color: '#c9cdd4' }}>🔒</span>}
+                prefix={<IconLock style={{ color: '#c9cdd4' }} />}
                 placeholder="请设置密码"
                 size="large"
               />
@@ -153,7 +161,7 @@ export default function Register() {
               ]}
             >
               <Input.Password
-                prefix={<span style={{ color: '#c9cdd4' }}>🔒</span>}
+                prefix={<IconLock style={{ color: '#c9cdd4' }} />}
                 placeholder="请再次输入密码"
                 size="large"
               />

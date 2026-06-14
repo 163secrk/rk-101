@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Form, Input, Button, Checkbox, Message, Link } from '@arco-design/web-react'
+import { IconUser, IconPhone, IconLock } from '@arco-design/web-react/icon'
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import { login } from '../api/user'
 import './auth-pages.less'
@@ -74,7 +75,7 @@ export default function Login() {
               rules={[{ required: true, message: '请输入用户名' }]}
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>👤</span>}
+                prefix={<IconUser style={{ color: '#c9cdd4' }} />}
                 placeholder="请输入用户名"
                 size="large"
               />
@@ -89,7 +90,7 @@ export default function Login() {
               ]}
             >
               <Input
-                prefix={<span style={{ color: '#c9cdd4' }}>📱</span>}
+                prefix={<IconPhone style={{ color: '#c9cdd4' }} />}
                 placeholder="请输入手机号"
                 size="large"
                 maxLength={11}
@@ -102,7 +103,7 @@ export default function Login() {
             rules={[{ required: true, message: '请输入密码' }]}
           >
             <Input.Password
-              prefix={<span style={{ color: '#c9cdd4' }}>🔒</span>}
+              prefix={<IconLock style={{ color: '#c9cdd4' }} />}
               placeholder="请输入密码"
               size="large"
             />

@@ -1,13 +1,12 @@
 import React from 'react'
-import { Outlet } from 'react-router-dom'
 import './AuthLayout.less'
 
-export default function AuthLayout() {
+export default function AuthLayout({ children }) {
   return (
     <div className="auth-layout">
       <div className="auth-bg" />
       <div className="auth-content">
-        <Outlet />
+        {children}
       </div>
     </div>
   )

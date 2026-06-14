@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Button, Input, Space, Tag, Typography, Message, Form, Descriptions, Result, Divider } from '@arco-design/web-react'
-import { IconScan, IconCheck, IconClose } from '@arco-design/web-react/icon'
+import { IconScan, IconCheck, IconClose, IconSearch } from '@arco-design/web-react/icon'
 import { verifyPassCode } from '../api/points'
 import './PassCodeVerify.less'
 
@@ -151,7 +151,7 @@ export default function PassCodeVerify() {
 
           {!verifyStatus && (
             <div className="empty-result">
-              <div className="empty-icon">🔍</div>
+              <div className="empty-icon"><IconSearch style={{ fontSize: 48, color: '#c9cdd4' }} /></div>
               <Text type="secondary">请输入通行码内容进行验证</Text>
             </div>
           )}

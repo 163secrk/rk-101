@@ -1,5 +1,21 @@
 import React, { useState, useMemo } from 'react'
 import { Layout, Menu, Avatar, Dropdown, Button } from '@arco-design/web-react'
+import {
+  IconHome,
+  IconDelete,
+  IconScan,
+  IconSearch,
+  IconStar,
+  IconGift,
+  IconTrophy,
+  IconFile,
+  IconUser,
+  IconSettings,
+  IconPoweroff,
+  IconMenuFold,
+  IconMenuUnfold,
+  IconQrcode,
+} from '@arco-design/web-react/icon'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Message } from '@arco-design/web-react'
 import { logout as logoutApi } from '../api/user'
@@ -9,15 +25,15 @@ const { Sider, Header, Content } = Layout
 const MenuItem = Menu.Item
 
 const menuIconMap = {
-  dashboard: '📊',
-  delivery: '♻️',
-  passcode: '🎫',
-  verify: '🔍',
-  points: '💰',
-  exchange: '🎁',
-  achievement: '🏆',
-  inspection: '📋',
-  profile: '👤',
+  dashboard: IconHome,
+  delivery: IconDelete,
+  passcode: IconQrcode,
+  verify: IconSearch,
+  points: IconStar,
+  exchange: IconGift,
+  achievement: IconTrophy,
+  inspection: IconFile,
+  profile: IconUser,
 }
 
 const roleMenus = {
@@ -88,16 +104,16 @@ export default function BasicLayout() {
   const userDropdown = (
     <div className="user-dropdown-menu">
       <div className="dropdown-item" onClick={() => navigate('/profile')}>
-        <span style={{ fontSize: 16, marginRight: 10 }}>👤</span>
+        <IconUser style={{ fontSize: 16, marginRight: 10 }} />
         <span>个人中心</span>
       </div>
       <div className="dropdown-item" onClick={() => navigate('/profile?tab=settings')}>
-        <span style={{ fontSize: 16, marginRight: 10 }}>⚙️</span>
+        <IconSettings style={{ fontSize: 16, marginRight: 10 }} />
         <span>设置</span>
       </div>
       <div className="dropdown-divider" />
       <div className="dropdown-item logout" onClick={handleLogout}>
-        <span style={{ fontSize: 16, marginRight: 10 }}>🚪</span>
+        <IconPoweroff style={{ fontSize: 16, marginRight: 10 }} />
         <span>退出登录</span>
       </div>
     </div>
@@ -123,19 +139,22 @@ export default function BasicLayout() {
           onClickMenuItem={(key) => navigate(`/${key}`)}
           style={{ width: '100%' }}
         >
-          {(roleMenus[userInfo.role] || roleMenus.resident).map((item) => (
-            <MenuItem key={item.key}>
-              <span className="menu-icon">{menuIconMap[item.key]}</span>
-              <span>{item.name}</span>
-            </MenuItem>
-          ))}
+          {(roleMenus[userInfo.role] || roleMenus.resident).map((item) => {
+            const IconComponent = menuIconMap[item.key]
+            return (
+              <MenuItem key={item.key}>
+                <IconComponent className="menu-icon" />
+                <span>{item.name}</span>
+              </MenuItem>
+            )
+          })}
         </Menu>
       </Sider>
       <Layout className="layout-main">
         <Header className="layout-header">
           <Button
             type="text"
-            icon={<span style={{ fontSize: 18 }}>{collapsed ? '☰' : '✕'}</span>}
+            icon={collapsed ? <IconMenuUnfold style={{ fontSize: 18 }} /> : <IconMenuFold style={{ fontSize: 18 }} />}
             onClick={() => setCollapsed(!collapsed)}
             className="collapse-btn"
           />
