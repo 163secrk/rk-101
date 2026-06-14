@@ -235,6 +235,29 @@ class PointAccount(models.Model):
             self.user.save()
             return record
 
+    def refund_points(self, points, source='system', related_id='', remark=''):
+        from django.db import transaction
+        with transaction.atomic():
+            balance_before = self.balance
+            balance_after = balance_before + points
+            record = PointRecord.objects.create(
+                account=self,
+                user=self.user,
+                type='adjust',
+                source=source,
+                points=points,
+                balance_before=balance_before,
+                balance_after=balance_after,
+                related_id=related_id,
+                remark=remark,
+            )
+            self.balance = balance_after
+            self.total_spent = max(0, self.total_spent - points)
+            self.save()
+            self.user.available_points = balance_after
+            self.user.save()
+            return record
+
 
 class PointRecord(models.Model):
     TYPE_CHOICES = [
@@ -549,7 +572,7 @@ class ExchangeOrder(models.Model):
             self.goods.save()
 
             account = self.point_record.account
-            account.add_points(
+            account.refund_points(
                 points=self.total_points,
                 source='system',
                 related_id=str(self.id),

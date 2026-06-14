@@ -223,48 +223,44 @@ export default function CommunityDashboard() {
       <Spin loading={loading} style={{ display: 'block' }}>
         <Row gutter={16}>
           <Col span={6}>
-            <Card className="dash-stat-card" style={{ borderLeft: '4px solid #00B42A' }}>
+            <Card className="dash-stat-card stat-co2" style={{ borderLeft: '4px solid #00B42A' }}>
               <div className="stat-emoji">🌍</div>
               <Statistic
                 title="今日减排量"
                 value={dashboardData.today.co2_reduction}
                 precision={1}
                 suffix="kg CO₂"
-                valueStyle={{ color: '#00B42A', fontSize: 26 }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card className="dash-stat-card" style={{ borderLeft: '4px solid #165DFF' }}>
+            <Card className="dash-stat-card stat-weight" style={{ borderLeft: '4px solid #165DFF' }}>
               <div className="stat-emoji">♻️</div>
               <Statistic
                 title="今日分类重量"
                 value={dashboardData.today.weight}
                 precision={1}
                 suffix="kg"
-                valueStyle={{ color: '#165DFF', fontSize: 26 }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card className="dash-stat-card" style={{ borderLeft: '4px solid #FF7D00' }}>
+            <Card className="dash-stat-card stat-points" style={{ borderLeft: '4px solid #FF7D00' }}>
               <div className="stat-emoji">⭐</div>
               <Statistic
                 title="今日产生积分"
                 value={dashboardData.today.points}
                 suffix="分"
-                valueStyle={{ color: '#FF7D00', fontSize: 26 }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card className="dash-stat-card" style={{ borderLeft: '4px solid #722ED1' }}>
+            <Card className="dash-stat-card stat-people" style={{ borderLeft: '4px solid #722ED1' }}>
               <div className="stat-emoji">👥</div>
               <Statistic
                 title="今日参与人数"
                 value={dashboardData.today.people}
                 suffix="人"
-                valueStyle={{ color: '#722ED1', fontSize: 26 }}
               />
             </Card>
           </Col>

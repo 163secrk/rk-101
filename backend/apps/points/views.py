@@ -911,9 +911,8 @@ class CommunityDashboardView(APIView):
         building_ranking = (
             PointAccount.objects
             .filter(user__role='resident')
-            .exclude(user__building__isnull=True)
-            .exclude(user__building='')
-            .values('user__building')
+            .exclude(user__community='')
+            .values('user__community')
             .annotate(
                 total_points=models.Sum('total_earned'),
                 user_count=models.Count('user_id')
@@ -925,7 +924,7 @@ class CommunityDashboardView(APIView):
         for idx, item in enumerate(building_ranking, 1):
             ranking_list.append({
                 'rank': idx,
-                'building': item['user__building'],
+                'building': item['user__community'],
                 'total_points': item['total_points'],
                 'user_count': item['user_count'],
                 'avg_points': round(item['total_points'] / max(item['user_count'], 1), 1),
