@@ -3,7 +3,7 @@ import {
   Card, Grid, Statistic, Spin, Empty, Tag, Table
 } from '@arco-design/web-react'
 import {
-  IconLeaf, IconUserGroup, IconStar, IconTrophy
+  IconSun, IconUserGroup, IconStar, IconTrophy
 } from '@arco-design/web-react/icon'
 import ReactECharts from 'echarts-for-react'
 import { getCommunityDashboard } from '../api/points'
@@ -212,7 +212,7 @@ export default function CommunityDashboard() {
     <div className="community-dashboard-page">
       <div className="dashboard-header">
         <div className="header-title">
-          <IconLeaf style={{ fontSize: 28, color: '#00B42A' }} />
+          <IconSun style={{ fontSize: 28, color: '#00B42A' }} />
           <h2>社区环保大屏</h2>
         </div>
         <div className="header-time">
