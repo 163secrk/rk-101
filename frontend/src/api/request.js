@@ -22,7 +22,9 @@ service.interceptors.response.use(
     const res = response.data
     if (res.code !== 0 && res.code !== undefined) {
       Message.error(res.message || '请求失败')
-      return Promise.reject(new Error(res.message || 'Error'))
+      const err = new Error(res.message || 'Error')
+      err.response = res
+      return Promise.reject(err)
     }
     return res
   },

@@ -95,6 +95,41 @@ class DeliveryCreateSerializer(serializers.Serializer):
         'min_value': '投放重量不能小于0.1kg'
     })
 
+    def validate(self, attrs):
+        from .models import SmartBin
+
+        bin_id = attrs.get('bin_id')
+        category = attrs.get('category')
+        weight = attrs.get('weight')
+
+        try:
+            bin_obj = SmartBin.objects.get(pk=bin_id)
+        except SmartBin.DoesNotExist:
+            raise serializers.ValidationError({'bin_id': '投放点不存在'})
+
+        if bin_obj.status != 1:
+            status_map = {0: '离线', 2: '维护中', 3: '故障'}
+            raise serializers.ValidationError({
+                'bin_id': '投放点当前{}，无法投放'.format(status_map.get(bin_obj.status, '状态异常'))
+            })
+
+        if bin_obj.category != 'mixed' and bin_obj.category != category:
+            category_map = dict(SmartBin.CATEGORY_CHOICES)
+            raise serializers.ValidationError({
+                'category': '该投放点仅支持投放【{}】，请选择正确的垃圾类别'.format(
+                    category_map.get(bin_obj.category, bin_obj.category)
+                )
+            })
+
+        remaining = bin_obj.capacity - bin_obj.used
+        if weight > remaining:
+            raise serializers.ValidationError({
+                'weight': '投放点容量不足，剩余容量约 {:.1f}kg，请减少投放重量'.format(remaining)
+            })
+
+        attrs['bin_obj'] = bin_obj
+        return attrs
+
 
 class SmartBinSerializer(serializers.ModelSerializer):
     status_name = serializers.SerializerMethodField()

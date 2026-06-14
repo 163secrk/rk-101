@@ -348,17 +348,18 @@ class DeliveryCreateView(APIView):
     @transaction.atomic
     def post(self, request):
         serializer = DeliveryCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            errors = {}
+            for field, messages in serializer.errors.items():
+                errors[field] = messages[0] if messages else '参数错误'
+            return Response({
+                'code': 400,
+                'message': '参数校验失败',
+                'data': errors
+            })
         data = serializer.validated_data
 
-        try:
-            bin_obj = SmartBin.objects.get(pk=data['bin_id'])
-        except SmartBin.DoesNotExist:
-            return Response({
-                'code': 404,
-                'message': '投放点不存在',
-                'data': None
-            }, status=status.HTTP_404_NOT_FOUND)
+        bin_obj = data['bin_obj']
 
         points_per_kg = POINTS_PER_KG.get(data['category'], 0)
         points_earned = int(data['weight'] * points_per_kg)
