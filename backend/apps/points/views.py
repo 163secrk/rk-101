@@ -1,23 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status, generics
+from rest_framework import status, generics, serializers
 from django.db import transaction
+from django.db import models
 from django.utils import timezone
-from .models import GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord
+from .models import (
+    GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord,
+    POINTS_PER_KG_CONFIG, LEVEL_CONFIG
+)
 from .serializers import (
     GreenPassCodeSerializer, PassCodeVerifySerializer,
-    SmartBinSerializer, DeliveryRecordSerializer, DeliveryCreateSerializer
+    SmartBinSerializer, DeliveryRecordSerializer, DeliveryCreateSerializer,
+    PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer
 )
 from rest_framework.permissions import BasePermission
-
-
-POINTS_PER_KG = {
-    'recyclable': 100,
-    'kitchen': 50,
-    'hazardous': 80,
-    'other': 20,
-}
 
 
 class IsResident(BasePermission):
@@ -361,7 +358,7 @@ class DeliveryCreateView(APIView):
 
         bin_obj = data['bin_obj']
 
-        points_per_kg = POINTS_PER_KG.get(data['category'], 0)
+        points_per_kg = PointAccount.get_points_per_kg(data['category'])
         points_earned = int(data['weight'] * points_per_kg)
 
         delivery = DeliveryRecord.objects.create(
@@ -371,36 +368,8 @@ class DeliveryCreateView(APIView):
             weight=data['weight'],
             points_earned=points_earned,
             points_per_kg=points_per_kg,
-            status=1,
+            status=0,
         )
-
-        if points_earned > 0:
-            account, _ = PointAccount.objects.get_or_create(user=request.user)
-            balance_before = account.balance
-            balance_after = balance_before + points_earned
-
-            point_record = PointRecord.objects.create(
-                account=account,
-                user=request.user,
-                type='earn',
-                source='delivery',
-                points=points_earned,
-                balance_before=balance_before,
-                balance_after=balance_after,
-                related_id=str(delivery.id),
-                remark=f'投放{delivery.get_category_display()}{data["weight"]}kg'
-            )
-
-            account.balance = balance_after
-            account.total_earned += points_earned
-            account.save()
-
-            request.user.available_points = balance_after
-            request.user.total_points += points_earned
-            request.user.save()
-
-            delivery.point_record = point_record
-            delivery.save()
 
         bin_obj.used += data['weight']
         bin_obj.save()
@@ -408,7 +377,7 @@ class DeliveryCreateView(APIView):
         result_serializer = DeliveryRecordSerializer(delivery)
         return Response({
             'code': 0,
-            'message': '投放登记成功',
+            'message': '投放登记成功，等待审核',
             'data': result_serializer.data
         })
 
@@ -438,4 +407,125 @@ class DeliveryDetailView(APIView):
             'code': 0,
             'message': '获取成功',
             'data': serializer.data
+        })
+
+
+class DeliveryAuditView(APIView):
+    permission_classes = [IsAuthenticated, IsInspector]
+
+    def post(self, request, pk):
+        try:
+            delivery = DeliveryRecord.objects.get(pk=pk)
+        except DeliveryRecord.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '投递记录不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = DeliveryAuditSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        action = serializer.validated_data['action']
+        remark = serializer.validated_data.get('remark', '')
+
+        if action == 'approve':
+            success, msg = delivery.approve(inspector=request.user, remark=remark)
+            if not success:
+                return Response({
+                    'code': 400,
+                    'message': msg,
+                    'data': None
+                })
+        elif action == 'reject':
+            success, msg = delivery.reject(inspector=request.user, remark=remark or '分类不符合要求')
+            if not success:
+                return Response({
+                    'code': 400,
+                    'message': msg,
+                    'data': None
+                })
+        else:
+            return Response({
+                'code': 400,
+                'message': '无效的操作类型',
+                'data': None
+            })
+
+        result_serializer = DeliveryRecordSerializer(delivery)
+        return Response({
+            'code': 0,
+            'message': msg,
+            'data': result_serializer.data
+        })
+
+
+class PointAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        account, _ = PointAccount.objects.get_or_create(user=request.user)
+        progress = 0
+        if account.next_level_points > account.total_earned:
+            diff = account.next_level_points - account.total_earned
+            last_level_min = 0
+            for cfg in [{'min_points': 0}] + list(LEVEL_CONFIG):
+                if account.total_earned >= cfg['min_points']:
+                    last_level_min = cfg['min_points']
+            range_val = max(account.next_level_points - last_level_min, 1)
+            current = account.total_earned - last_level_min
+            progress = min(round(current / range_val * 100, 1), 100)
+        else:
+            progress = 100
+        serializer = PointAccountSerializer(account)
+        data = serializer.data
+        data['level_progress'] = progress
+        data['points_config'] = POINTS_PER_KG_CONFIG
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': data
+        })
+
+
+class PointRecordsView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PointRecordSerializer
+
+    def get_queryset(self):
+        queryset = PointRecord.objects.filter(user=self.request.user)
+        type_filter = self.request.query_params.get('type')
+        if type_filter:
+            queryset = queryset.filter(type=type_filter)
+        source = self.request.query_params.get('source')
+        if source:
+            queryset = queryset.filter(source=source)
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = queryset.count()
+        records = queryset[start:end]
+        serializer = self.get_serializer(records, many=True)
+
+        earn_total = queryset.filter(type='earn').aggregate(total=models.Sum('points'))['total'] or 0
+        spend_total = abs(queryset.filter(type='spend').aggregate(total=models.Sum('points'))['total'] or 0)
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'summary': {
+                    'earn_total': earn_total,
+                    'spend_total': spend_total,
+                    'count': total,
+                }
+            }
         })

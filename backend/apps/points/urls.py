@@ -3,7 +3,8 @@ from .views import (
     HomeView, GeneratePassCodeView, VerifyPassCodeView,
     PassCodeDetailView, MyPassCodesView,
     SmartBinListView, SmartBinCreateView, SmartBinDetailView,
-    DeliveryListView, DeliveryCreateView, DeliveryDetailView
+    DeliveryListView, DeliveryCreateView, DeliveryDetailView,
+    DeliveryAuditView, PointAccountView, PointRecordsView
 )
 
 urlpatterns = [
@@ -18,4 +19,7 @@ urlpatterns = [
     path('deliveries/', DeliveryListView.as_view(), name='delivery-list'),
     path('deliveries/create/', DeliveryCreateView.as_view(), name='delivery-create'),
     path('deliveries/<int:pk>/', DeliveryDetailView.as_view(), name='delivery-detail'),
+    path('deliveries/<int:pk>/audit/', DeliveryAuditView.as_view(), name='delivery-audit'),
+    path('points/account/', PointAccountView.as_view(), name='point-account'),
+    path('points/records/', PointRecordsView.as_view(), name='point-records'),
 ]

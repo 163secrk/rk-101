@@ -43,15 +43,51 @@ class PassCodeVerifySerializer(serializers.Serializer):
 
 
 class PointAccountSerializer(serializers.ModelSerializer):
+    user_info = serializers.SerializerMethodField()
+
     class Meta:
         model = PointAccount
         fields = '__all__'
+        read_only_fields = ['user', 'total_earned', 'total_spent', 'total_expired',
+                            'balance', 'frozen', 'level', 'level_name',
+                            'next_level_points', 'created_at', 'updated_at']
+
+    def get_user_info(self, obj):
+        user = obj.user
+        return {
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'avatar': user.avatar,
+            'phone': user.phone,
+        }
 
 
 class PointRecordSerializer(serializers.ModelSerializer):
+    type_name = serializers.SerializerMethodField()
+    source_name = serializers.SerializerMethodField()
+
     class Meta:
         model = PointRecord
         fields = '__all__'
+
+    def get_type_name(self, obj):
+        return obj.get_type_display()
+
+    def get_source_name(self, obj):
+        return obj.get_source_display()
+
+
+class DeliveryAuditSerializer(serializers.Serializer):
+    ACTION_CHOICES = [
+        ('approve', '审核通过'),
+        ('reject', '驳回'),
+    ]
+    action = serializers.ChoiceField(choices=ACTION_CHOICES, required=True, error_messages={
+        'required': '请选择审核操作',
+        'invalid_choice': '无效的审核操作'
+    })
+    remark = serializers.CharField(required=False, allow_blank=True, default='', max_length=255)
 
 
 class DeliveryRecordSerializer(serializers.ModelSerializer):

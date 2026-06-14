@@ -123,6 +123,22 @@ class GreenPassCode(models.Model):
             return False, f'验证失败: {str(e)}'
 
 
+POINTS_PER_KG_CONFIG = {
+    'recyclable': 100,
+    'kitchen': 50,
+    'hazardous': 80,
+    'other': 20,
+}
+
+LEVEL_CONFIG = [
+    {'level': 1, 'name': '环保新手', 'min_points': 0},
+    {'level': 2, 'name': '绿动达人', 'min_points': 1000},
+    {'level': 3, 'name': '环保先锋', 'min_points': 5000},
+    {'level': 4, 'name': '低碳卫士', 'min_points': 10000},
+    {'level': 5, 'name': '绿色领袖', 'min_points': 30000},
+]
+
+
 class PointAccount(models.Model):
     user = models.OneToOneField('users.User', on_delete=models.CASCADE, related_name='point_account', verbose_name='用户')
     total_earned = models.IntegerField(default=0, verbose_name='累计获得')
@@ -143,6 +159,81 @@ class PointAccount(models.Model):
 
     def __str__(self):
         return f'{self.user.nickname} - 余额:{self.balance}'
+
+    @classmethod
+    def get_points_per_kg(cls, category):
+        return POINTS_PER_KG_CONFIG.get(category, 0)
+
+    @classmethod
+    def calculate_points(cls, category, weight):
+        points_per_kg = cls.get_points_per_kg(category)
+        return int(weight * points_per_kg), points_per_kg
+
+    def _update_level(self):
+        total = self.total_earned
+        current_level = 1
+        next_min = 0
+        for cfg in LEVEL_CONFIG:
+            if total >= cfg['min_points']:
+                current_level = cfg['level']
+                self.level_name = cfg['name']
+            else:
+                next_min = cfg['min_points']
+                break
+        else:
+            next_min = LEVEL_CONFIG[-1]['min_points']
+        self.level = current_level
+        self.next_level_points = next_min if total < next_min else next_min
+
+    def add_points(self, points, source='delivery', related_id='', remark=''):
+        from django.db import transaction
+        with transaction.atomic():
+            balance_before = self.balance
+            balance_after = balance_before + points
+            record = PointRecord.objects.create(
+                account=self,
+                user=self.user,
+                type='earn',
+                source=source,
+                points=points,
+                balance_before=balance_before,
+                balance_after=balance_after,
+                related_id=related_id,
+                remark=remark,
+            )
+            self.balance = balance_after
+            self.total_earned += points
+            self._update_level()
+            self.save()
+            self.user.available_points = balance_after
+            self.user.total_points += points
+            self.user.save()
+            return record
+
+    def spend_points(self, points, source='exchange', related_id='', remark=''):
+        from django.db import transaction
+        with transaction.atomic():
+            if self.balance < points:
+                raise ValueError('积分余额不足')
+            balance_before = self.balance
+            balance_after = balance_before - points
+            record = PointRecord.objects.create(
+                account=self,
+                user=self.user,
+                type='spend',
+                source=source,
+                points=-points,
+                balance_before=balance_before,
+                balance_after=balance_after,
+                related_id=related_id,
+                remark=remark,
+            )
+            self.balance = balance_after
+            self.total_spent += points
+            self.save()
+            self.user.available_points = balance_after
+            self.user.save()
+            return record
 
 
 class PointRecord(models.Model):
@@ -260,6 +351,46 @@ class DeliveryRecord(models.Model):
 
     def __str__(self):
         return f'{self.user.nickname} {self.category} {self.weight}kg'
+
+    def approve(self, inspector=None, remark=''):
+        from django.db import transaction
+        if self.status == 1:
+            return True, '已审核通过，无需重复操作'
+        if self.status == 3:
+            return False, '该记录已被驳回，无法审核通过'
+        with transaction.atomic():
+            points_earned, points_per_kg = PointAccount.calculate_points(self.category, self.weight)
+            self.status = 1
+            self.points_earned = points_earned
+            self.points_per_kg = points_per_kg
+            if inspector:
+                self.inspector_id = inspector.id
+            if remark:
+                self.inspection_remark = remark
+            if points_earned > 0:
+                account, _ = PointAccount.objects.get_or_create(user=self.user)
+                point_record = account.add_points(
+                    points=points_earned,
+                    source='delivery',
+                    related_id=str(self.id),
+                    remark=f'投放{self.get_category_display()}{self.weight}kg'
+                )
+                self.point_record = point_record
+            self.save()
+            return True, '审核通过，积分已到账'
+
+    def reject(self, inspector=None, remark='分类不符合要求'):
+        if self.status == 3:
+            return True, '已驳回，无需重复操作'
+        if self.status == 1:
+            return False, '该记录已审核通过，无法驳回'
+        self.status = 3
+        if inspector:
+            self.inspector_id = inspector.id
+        if remark:
+            self.inspection_remark = remark
+        self.save()
+        return True, '已驳回'
 
 
 class ExchangeGoods(models.Model):
