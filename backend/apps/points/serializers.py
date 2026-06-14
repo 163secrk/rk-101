@@ -55,12 +55,63 @@ class PointRecordSerializer(serializers.ModelSerializer):
 
 
 class DeliveryRecordSerializer(serializers.ModelSerializer):
+    bin_info = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    status_name = serializers.SerializerMethodField()
+
     class Meta:
         model = DeliveryRecord
         fields = '__all__'
+        read_only_fields = ['user', 'points_earned', 'points_per_kg', 'status', 'point_record']
+
+    def get_bin_info(self, obj):
+        if obj.bin:
+            return {
+                'id': obj.bin.id,
+                'bin_code': obj.bin.bin_code,
+                'name': obj.bin.name,
+                'location': obj.bin.location,
+            }
+        return None
+
+    def get_category_name(self, obj):
+        return obj.get_category_display()
+
+    def get_status_name(self, obj):
+        return obj.get_status_display()
+
+
+class DeliveryCreateSerializer(serializers.Serializer):
+    bin_id = serializers.IntegerField(required=True, error_messages={
+        'required': '请选择投放点'
+    })
+    category = serializers.ChoiceField(
+        choices=DeliveryRecord.CATEGORY_CHOICES,
+        required=True,
+        error_messages={'required': '请选择垃圾类别'}
+    )
+    weight = serializers.FloatField(required=True, min_value=0.1, error_messages={
+        'required': '请输入投放重量',
+        'min_value': '投放重量不能小于0.1kg'
+    })
 
 
 class SmartBinSerializer(serializers.ModelSerializer):
+    status_name = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    usage_rate = serializers.SerializerMethodField()
+
     class Meta:
         model = SmartBin
         fields = '__all__'
+
+    def get_status_name(self, obj):
+        return obj.get_status_display()
+
+    def get_category_name(self, obj):
+        return obj.get_category_display()
+
+    def get_usage_rate(self, obj):
+        if obj.capacity > 0:
+            return round(obj.used / obj.capacity * 100, 1)
+        return 0

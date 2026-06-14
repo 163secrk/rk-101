@@ -10,6 +10,7 @@ const Register = lazy(() => import('../pages/Register'))
 const Dashboard = lazy(() => import('../pages/Dashboard'))
 const Delivery = lazy(() => import('../pages/Delivery'))
 const Points = lazy(() => import('../pages/Points'))
+const BinManagement = lazy(() => import('../pages/BinManagement'))
 const Exchange = lazy(() => import('../pages/Exchange'))
 const Achievement = lazy(() => import('../pages/Achievement'))
 const Inspection = lazy(() => import('../pages/Inspection'))
@@ -36,6 +37,7 @@ export default function AppRouter() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="delivery" element={<Delivery />} />
+          <Route path="bins" element={<BinManagement />} />
           <Route path="passcode" element={<GreenPassCode />} />
           <Route path="verify" element={<PassCodeVerify />} />
           <Route path="points" element={<Points />} />

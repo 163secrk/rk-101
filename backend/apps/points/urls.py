@@ -1,7 +1,9 @@
 from django.urls import path
 from .views import (
     HomeView, GeneratePassCodeView, VerifyPassCodeView,
-    PassCodeDetailView, MyPassCodesView
+    PassCodeDetailView, MyPassCodesView,
+    SmartBinListView, SmartBinCreateView, SmartBinDetailView,
+    DeliveryListView, DeliveryCreateView, DeliveryDetailView
 )
 
 urlpatterns = [
@@ -10,4 +12,10 @@ urlpatterns = [
     path('passcode/verify/', VerifyPassCodeView.as_view(), name='passcode-verify'),
     path('passcode/<uuid:code_id>/', PassCodeDetailView.as_view(), name='passcode-detail'),
     path('passcode/mine/', MyPassCodesView.as_view(), name='passcode-mine'),
+    path('bins/', SmartBinListView.as_view(), name='bin-list'),
+    path('bins/create/', SmartBinCreateView.as_view(), name='bin-create'),
+    path('bins/<int:pk>/', SmartBinDetailView.as_view(), name='bin-detail'),
+    path('deliveries/', DeliveryListView.as_view(), name='delivery-list'),
+    path('deliveries/create/', DeliveryCreateView.as_view(), name='delivery-create'),
+    path('deliveries/<int:pk>/', DeliveryDetailView.as_view(), name='delivery-detail'),
 ]

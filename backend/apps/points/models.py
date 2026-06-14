@@ -191,12 +191,23 @@ class SmartBin(models.Model):
         (3, '故障'),
     ]
 
+    CATEGORY_CHOICES = [
+        ('recyclable', '可回收物'),
+        ('kitchen', '厨余垃圾'),
+        ('hazardous', '有害垃圾'),
+        ('other', '其他垃圾'),
+        ('mixed', '混合投放'),
+    ]
+
     bin_code = models.CharField(max_length=50, unique=True, verbose_name='设备编号')
-    name = models.CharField(max_length=100, verbose_name='设备名称')
-    location = models.CharField(max_length=255, verbose_name='安装位置')
+    name = models.CharField(max_length=100, verbose_name='站点名称')
+    location = models.CharField(max_length=255, verbose_name='安装地址')
     community = models.CharField(max_length=100, blank=True, default='', verbose_name='所属社区')
+    longitude = models.FloatField(null=True, blank=True, verbose_name='经度')
+    latitude = models.FloatField(null=True, blank=True, verbose_name='纬度')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='mixed', verbose_name='垃圾类型')
     status = models.SmallIntegerField(choices=STATUS_CHOICES, default=1, verbose_name='状态')
-    capacity = models.FloatField(default=100.0, verbose_name='总容量(L)')
+    capacity = models.FloatField(default=100.0, verbose_name='容量上限(L)')
     used = models.FloatField(default=0.0, verbose_name='已使用(L)')
     last_online = models.DateTimeField(null=True, blank=True, verbose_name='最后在线时间')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')

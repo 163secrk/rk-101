@@ -15,6 +15,7 @@ import {
   IconMenuFold,
   IconMenuUnfold,
   IconQrcode,
+  IconStorage,
 } from '@arco-design/web-react/icon'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Message } from '@arco-design/web-react'
@@ -30,6 +31,7 @@ const menuIconMap = {
   passcode: IconQrcode,
   verify: IconSearch,
   points: IconStar,
+  bins: IconStorage,
   exchange: IconGift,
   achievement: IconTrophy,
   inspection: IconFile,
@@ -63,6 +65,7 @@ const roleMenus = {
     { key: 'dashboard', name: '数据大盘' },
     { key: 'passcode', name: '绿色通行码' },
     { key: 'verify', name: '通行码验证' },
+    { key: 'bins', name: '投放点' },
     { key: 'delivery', name: '投放管理' },
     { key: 'points', name: '积分中心' },
     { key: 'exchange', name: '兑换商城' },
