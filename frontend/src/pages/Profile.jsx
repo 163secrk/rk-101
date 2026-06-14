@@ -237,27 +237,31 @@ export default function Profile() {
             </div>
           </Form>
         ) : (
-          <Descriptions column={1} labelStyle={{ width: 120 }}>
-            <Descriptions.Item label="用户名">{userInfo.username || '--'}</Descriptions.Item>
-            <Descriptions.Item label="手机号">{userInfo.phone || '--'}</Descriptions.Item>
-            <Descriptions.Item label="邮箱">{userInfo.email || '--'}</Descriptions.Item>
-            <Descriptions.Item label="性别">
-              {userInfo.gender === 1 ? '男' : userInfo.gender === 2 ? '女' : '未知'}
-            </Descriptions.Item>
-            <Descriptions.Item label="身份码">{userInfo.identity_code || '未生成'}</Descriptions.Item>
-            <Descriptions.Item label="所属社区">{userInfo.community || '--'}</Descriptions.Item>
-            <Descriptions.Item label="详细地址">{userInfo.address || '--'}</Descriptions.Item>
+          <>
+            <Descriptions column={1} labelStyle={{ width: 120 }}>
+              <Descriptions.Item label="用户名">{userInfo.username || '--'}</Descriptions.Item>
+              <Descriptions.Item label="手机号">{userInfo.phone || '--'}</Descriptions.Item>
+              <Descriptions.Item label="邮箱">{userInfo.email || '--'}</Descriptions.Item>
+              <Descriptions.Item label="性别">
+                {userInfo.gender === 1 ? '男' : userInfo.gender === 2 ? '女' : '未知'}
+              </Descriptions.Item>
+              <Descriptions.Item label="身份码">{userInfo.identity_code || '未生成'}</Descriptions.Item>
+              <Descriptions.Item label="所属社区">{userInfo.community || '--'}</Descriptions.Item>
+              <Descriptions.Item label="详细地址">{userInfo.address || '--'}</Descriptions.Item>
+            </Descriptions>
             <Divider />
-            <Descriptions.Item label="可用积分">
-              <span style={{ color: '#00B42A', fontWeight: 600, fontSize: 18 }}>
-                {userInfo.available_points || 0}
-              </span>
-            </Descriptions.Item>
-            <Descriptions.Item label="累计积分">{userInfo.total_points || 0}</Descriptions.Item>
-            <Descriptions.Item label="注册时间">
-              {userInfo.created_at ? new Date(userInfo.created_at).toLocaleString() : '--'}
-            </Descriptions.Item>
-          </Descriptions>
+            <Descriptions column={1} labelStyle={{ width: 120 }}>
+              <Descriptions.Item label="可用积分">
+                <span style={{ color: '#00B42A', fontWeight: 600, fontSize: 18 }}>
+                  {userInfo.available_points || 0}
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="累计积分">{userInfo.total_points || 0}</Descriptions.Item>
+              <Descriptions.Item label="注册时间">
+                {userInfo.created_at ? new Date(userInfo.created_at).toLocaleString() : '--'}
+              </Descriptions.Item>
+            </Descriptions>
+          </>
         )}
       </div>
     </div>
@@ -344,10 +348,12 @@ export default function Profile() {
       >
         {isAdmin ? (
           <Tabs activeTab={activeTab} onChange={handleTabChange}>
-            <TabPane key="profile" title="个人资料" />
-            <TabPane key="invitations" title="邀请码管理" />
-            {activeTab === 'profile' && renderProfileTab()}
-            {activeTab === 'invitations' && renderInvitationsTab()}
+            <TabPane key="profile" title="个人资料">
+              {renderProfileTab()}
+            </TabPane>
+            <TabPane key="invitations" title="邀请码管理">
+              {renderInvitationsTab()}
+            </TabPane>
           </Tabs>
         ) : (
           renderProfileTab()
