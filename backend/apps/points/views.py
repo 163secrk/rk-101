@@ -7,12 +7,13 @@ from django.db import models
 from django.utils import timezone
 from .models import (
     GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord,
-    POINTS_PER_KG_CONFIG, LEVEL_CONFIG
+    POINTS_PER_KG_CONFIG, LEVEL_CONFIG, ExchangeGoods, ExchangeOrder
 )
 from .serializers import (
     GreenPassCodeSerializer, PassCodeVerifySerializer,
     SmartBinSerializer, DeliveryRecordSerializer, DeliveryCreateSerializer,
-    PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer
+    PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer,
+    ExchangeGoodsSerializer, ExchangeOrderSerializer, ExchangeCreateSerializer
 )
 from rest_framework.permissions import BasePermission
 
@@ -528,4 +529,231 @@ class PointRecordsView(generics.ListAPIView):
                     'count': total,
                 }
             }
+        })
+
+
+class GoodsListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ExchangeGoodsSerializer
+
+    def get_queryset(self):
+        queryset = ExchangeGoods.objects.filter(status=1).order_by('sort', '-created_at')
+        type_filter = self.request.query_params.get('type')
+        if type_filter:
+            queryset = queryset.filter(type=type_filter)
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        keyword = self.request.query_params.get('keyword')
+        if keyword:
+            queryset = queryset.filter(name__icontains=keyword)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = queryset.count()
+        goods_list = queryset[start:end]
+        serializer = self.get_serializer(goods_list, many=True)
+
+        physical_count = ExchangeGoods.objects.filter(status=1, type='physical').count()
+        virtual_count = ExchangeGoods.objects.filter(status=1, type='virtual').count()
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'stats': {
+                    'physical_count': physical_count,
+                    'virtual_count': virtual_count,
+                }
+            }
+        })
+
+
+class GoodsDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            goods = ExchangeGoods.objects.get(pk=pk)
+        except ExchangeGoods.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '商品不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ExchangeGoodsSerializer(goods)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+
+
+class ExchangeCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsResident]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = ExchangeCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            errors = {}
+            for field, messages in serializer.errors.items():
+                errors[field] = messages[0] if messages else '参数错误'
+            return Response({
+                'code': 400,
+                'message': '参数校验失败',
+                'data': errors
+            })
+
+        data = serializer.validated_data
+        goods = data['goods']
+        quantity = data.get('quantity', 1)
+
+        receiver_info = None
+        if goods.type == 'physical':
+            receiver_info = {
+                'name': data.get('receiver_name', ''),
+                'phone': data.get('receiver_phone', ''),
+                'address': data.get('receiver_address', ''),
+            }
+            if not receiver_info['name'] or not receiver_info['phone'] or not receiver_info['address']:
+                return Response({
+                    'code': 400,
+                    'message': '实物商品请填写完整的收货信息',
+                    'data': None
+                })
+
+        try:
+            order = ExchangeOrder.create_exchange_order(
+                user=request.user,
+                goods=goods,
+                quantity=quantity,
+                receiver_info=receiver_info
+            )
+        except ValueError as e:
+            return Response({
+                'code': 400,
+                'message': str(e),
+                'data': None
+            })
+
+        result_serializer = ExchangeOrderSerializer(order)
+        return Response({
+            'code': 0,
+            'message': '兑换成功',
+            'data': result_serializer.data
+        })
+
+
+class ExchangeOrderListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ExchangeOrderSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            queryset = ExchangeOrder.objects.all()
+        else:
+            queryset = ExchangeOrder.objects.filter(user=user)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        goods_type = self.request.query_params.get('goods_type')
+        if goods_type:
+            queryset = queryset.filter(goods_type=goods_type)
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = queryset.count()
+        orders = queryset[start:end]
+        serializer = self.get_serializer(orders, many=True)
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': total,
+                'page': page,
+                'page_size': page_size
+            }
+        })
+
+
+class ExchangeOrderDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            order = ExchangeOrder.objects.get(pk=pk)
+        except ExchangeOrder.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '订单不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.role == 'resident' and order.user_id != request.user.id:
+            return Response({
+                'code': 403,
+                'message': '无权查看此订单',
+                'data': None
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExchangeOrderSerializer(order)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+
+
+class ExchangeOrderCancelView(APIView):
+    permission_classes = [IsAuthenticated, IsResident]
+
+    def post(self, request, pk):
+        try:
+            order = ExchangeOrder.objects.get(pk=pk)
+        except ExchangeOrder.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '订单不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if order.user_id != request.user.id:
+            return Response({
+                'code': 403,
+                'message': '无权操作此订单',
+                'data': None
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        success, msg = order.cancel()
+        if not success:
+            return Response({
+                'code': 400,
+                'message': msg,
+                'data': None
+            })
+
+        serializer = ExchangeOrderSerializer(order)
+        return Response({
+            'code': 0,
+            'message': msg,
+            'data': serializer.data
         })

@@ -399,10 +399,16 @@ class ExchangeGoods(models.Model):
         (1, '上架'),
     ]
 
+    TYPE_CHOICES = [
+        ('physical', '实物商品'),
+        ('virtual', '虚拟券'),
+    ]
+
     goods_code = models.CharField(max_length=50, unique=True, verbose_name='商品编号')
     name = models.CharField(max_length=100, verbose_name='商品名称')
     description = models.TextField(blank=True, default='', verbose_name='商品描述')
     image = models.CharField(max_length=255, blank=True, default='', verbose_name='商品图片')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='physical', verbose_name='商品类型')
     points_price = models.IntegerField(verbose_name='积分价格')
     market_price = models.FloatField(default=0, verbose_name='市场价格')
     stock = models.IntegerField(default=0, verbose_name='库存')
@@ -437,9 +443,11 @@ class ExchangeOrder(models.Model):
     goods = models.ForeignKey(ExchangeGoods, on_delete=models.CASCADE, related_name='orders', verbose_name='商品')
     goods_name = models.CharField(max_length=100, verbose_name='商品名称快照')
     goods_image = models.CharField(max_length=255, blank=True, default='', verbose_name='商品图片快照')
+    goods_type = models.CharField(max_length=20, default='physical', verbose_name='商品类型快照')
     quantity = models.IntegerField(default=1, verbose_name='数量')
     total_points = models.IntegerField(verbose_name='消耗总积分')
     status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, verbose_name='状态')
+    voucher_code = models.CharField(max_length=50, blank=True, default='', verbose_name='虚拟券兑换码')
     receiver_name = models.CharField(max_length=50, blank=True, default='', verbose_name='收货人')
     receiver_phone = models.CharField(max_length=20, blank=True, default='', verbose_name='收货电话')
     receiver_address = models.CharField(max_length=255, blank=True, default='', verbose_name='收货地址')
@@ -458,6 +466,100 @@ class ExchangeOrder(models.Model):
 
     def __str__(self):
         return f'{self.order_no}'
+
+    @classmethod
+    def generate_order_no(cls):
+        import time
+        import random
+        timestamp = time.strftime('%Y%m%d%H%M%S')
+        random_str = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        return f'EX{timestamp}{random_str}'
+
+    @classmethod
+    def generate_voucher_code(cls):
+        import uuid
+        return uuid.uuid4().hex[:16].upper()
+
+    @classmethod
+    def create_exchange_order(cls, user, goods, quantity=1, receiver_info=None):
+        from django.db import transaction
+
+        with transaction.atomic():
+            if goods.status != 1:
+                raise ValueError('商品已下架')
+
+            if goods.stock < quantity:
+                raise ValueError('库存不足')
+
+            total_points = goods.points_price * quantity
+
+            account, _ = PointAccount.objects.get_or_create(user=user)
+            if account.balance < total_points:
+                raise ValueError('积分余额不足')
+
+            goods.stock -= quantity
+            goods.sold += quantity
+            goods.save()
+
+            point_record = account.spend_points(
+                points=total_points,
+                source='exchange',
+                related_id='',
+                remark=f'兑换{goods.name} x{quantity}'
+            )
+
+            order_no = cls.generate_order_no()
+            status = 4 if goods.type == 'virtual' else 0
+            voucher_code = cls.generate_voucher_code() if goods.type == 'virtual' else ''
+
+            order = cls.objects.create(
+                order_no=order_no,
+                user=user,
+                goods=goods,
+                goods_name=goods.name,
+                goods_image=goods.image,
+                goods_type=goods.type,
+                quantity=quantity,
+                total_points=total_points,
+                status=status,
+                voucher_code=voucher_code,
+                receiver_name=receiver_info.get('name', '') if receiver_info else '',
+                receiver_phone=receiver_info.get('phone', '') if receiver_info else '',
+                receiver_address=receiver_info.get('address', '') if receiver_info else '',
+                point_record=point_record,
+            )
+
+            point_record.related_id = str(order.id)
+            point_record.save()
+
+            return order
+
+    def cancel(self):
+        from django.db import transaction
+
+        if self.status == 3:
+            return True, '订单已取消，无需重复操作'
+
+        if self.status in [1, 2]:
+            return False, '已发货或已完成的订单无法取消'
+
+        with transaction.atomic():
+            self.goods.stock += self.quantity
+            self.goods.sold -= self.quantity
+            self.goods.save()
+
+            account = self.point_record.account
+            account.add_points(
+                points=self.total_points,
+                source='system',
+                related_id=str(self.id),
+                remark=f'取消订单{self.order_no}，积分退回'
+            )
+
+            self.status = 3
+            self.save()
+
+            return True, '订单已取消，积分已退回'
 
 
 class Achievement(models.Model):

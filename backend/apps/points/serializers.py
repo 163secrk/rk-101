@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import GreenPassCode, PointAccount, PointRecord, DeliveryRecord, SmartBin
+from .models import (
+    GreenPassCode, PointAccount, PointRecord, DeliveryRecord, SmartBin,
+    ExchangeGoods, ExchangeOrder
+)
 
 
 class GreenPassCodeSerializer(serializers.ModelSerializer):
@@ -186,3 +189,79 @@ class SmartBinSerializer(serializers.ModelSerializer):
         if obj.capacity > 0:
             return round(obj.used / obj.capacity * 100, 1)
         return 0
+
+
+class ExchangeGoodsSerializer(serializers.ModelSerializer):
+    type_name = serializers.SerializerMethodField()
+    status_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExchangeGoods
+        fields = '__all__'
+
+    def get_type_name(self, obj):
+        return obj.get_type_display()
+
+    def get_status_name(self, obj):
+        return obj.get_status_display()
+
+
+class ExchangeOrderSerializer(serializers.ModelSerializer):
+    status_name = serializers.SerializerMethodField()
+    goods_type_name = serializers.SerializerMethodField()
+    goods_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExchangeOrder
+        fields = '__all__'
+        read_only_fields = ['order_no', 'user', 'goods_name', 'goods_image', 'goods_type',
+                            'total_points', 'status', 'voucher_code', 'point_record']
+
+    def get_status_name(self, obj):
+        return obj.get_status_display()
+
+    def get_goods_type_name(self, obj):
+        return obj.goods.get_type_display() if obj.goods else ''
+
+    def get_goods_info(self, obj):
+        if obj.goods:
+            return {
+                'id': obj.goods.id,
+                'goods_code': obj.goods.goods_code,
+                'name': obj.goods.name,
+                'image': obj.goods.image,
+                'type': obj.goods.type,
+                'type_name': obj.goods.get_type_display(),
+                'points_price': obj.goods.points_price,
+            }
+        return None
+
+
+class ExchangeCreateSerializer(serializers.Serializer):
+    goods_id = serializers.IntegerField(required=True, error_messages={
+        'required': '请选择商品'
+    })
+    quantity = serializers.IntegerField(required=False, default=1, min_value=1, error_messages={
+        'min_value': '兑换数量不能小于1'
+    })
+    receiver_name = serializers.CharField(required=False, allow_blank=True, default='', max_length=50)
+    receiver_phone = serializers.CharField(required=False, allow_blank=True, default='', max_length=20)
+    receiver_address = serializers.CharField(required=False, allow_blank=True, default='', max_length=255)
+
+    def validate(self, attrs):
+        goods_id = attrs.get('goods_id')
+        quantity = attrs.get('quantity', 1)
+
+        try:
+            goods = ExchangeGoods.objects.get(pk=goods_id)
+        except ExchangeGoods.DoesNotExist:
+            raise serializers.ValidationError({'goods_id': '商品不存在'})
+
+        if goods.status != 1:
+            raise serializers.ValidationError({'goods_id': '商品已下架'})
+
+        if goods.stock < quantity:
+            raise serializers.ValidationError({'quantity': '库存不足'})
+
+        attrs['goods'] = goods
+        return attrs

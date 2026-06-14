@@ -25,3 +25,19 @@ export const getDeliveryList = (params) => request.get('/points/deliveries/', { 
 export const getDeliveryDetail = (id) => request.get(`/points/deliveries/${id}/`)
 
 export const createDelivery = (data) => request.post('/points/deliveries/create/', data)
+
+export const getPointAccount = () => request.get('/points/points/account/')
+
+export const getPointRecords = (params) => request.get('/points/points/records/', { params })
+
+export const getGoodsList = (params) => request.get('/points/goods/', { params })
+
+export const getGoodsDetail = (id) => request.get(`/points/goods/${id}/`)
+
+export const createExchange = (data) => request.post('/points/exchange/create/', data)
+
+export const getExchangeOrders = (params) => request.get('/points/exchange/orders/', { params })
+
+export const getExchangeOrderDetail = (id) => request.get(`/points/exchange/orders/${id}/`)
+
+export const cancelExchangeOrder = (id) => request.post(`/points/exchange/orders/${id}/cancel/`)

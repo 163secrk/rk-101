@@ -4,7 +4,10 @@ from .views import (
     PassCodeDetailView, MyPassCodesView,
     SmartBinListView, SmartBinCreateView, SmartBinDetailView,
     DeliveryListView, DeliveryCreateView, DeliveryDetailView,
-    DeliveryAuditView, PointAccountView, PointRecordsView
+    DeliveryAuditView, PointAccountView, PointRecordsView,
+    GoodsListView, GoodsDetailView,
+    ExchangeCreateView, ExchangeOrderListView,
+    ExchangeOrderDetailView, ExchangeOrderCancelView
 )
 
 urlpatterns = [
@@ -22,4 +25,10 @@ urlpatterns = [
     path('deliveries/<int:pk>/audit/', DeliveryAuditView.as_view(), name='delivery-audit'),
     path('points/account/', PointAccountView.as_view(), name='point-account'),
     path('points/records/', PointRecordsView.as_view(), name='point-records'),
+    path('goods/', GoodsListView.as_view(), name='goods-list'),
+    path('goods/<int:pk>/', GoodsDetailView.as_view(), name='goods-detail'),
+    path('exchange/create/', ExchangeCreateView.as_view(), name='exchange-create'),
+    path('exchange/orders/', ExchangeOrderListView.as_view(), name='exchange-order-list'),
+    path('exchange/orders/<int:pk>/', ExchangeOrderDetailView.as_view(), name='exchange-order-detail'),
+    path('exchange/orders/<int:pk>/cancel/', ExchangeOrderCancelView.as_view(), name='exchange-order-cancel'),
 ]

@@ -1,0 +1,343 @@
+.exchange-page {
+  .mall-container {
+    padding-top: 20px;
+
+    .mall-header {
+      margin-bottom: 20px;
+
+      .points-card {
+        background: linear-gradient(135deg, #FF7D00 0%, #FF9A2E 100%);
+        color: #fff;
+        border: none;
+
+        :global(.arco-card-body) {
+          padding: 20px;
+        }
+
+        .points-info {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+
+          .points-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .points-content {
+            .points-label {
+              font-size: 14px;
+              opacity: 0.9;
+              margin-bottom: 4px;
+            }
+
+            .points-value {
+              font-size: 28px;
+              font-weight: bold;
+
+              .points-unit {
+                font-size: 14px;
+                font-weight: normal;
+                margin-left: 4px;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .goods-filter {
+      margin-bottom: 20px;
+    }
+
+    .goods-card {
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .goods-image-wrapper {
+        position: relative;
+        height: 160px;
+        background: #f2f3f5;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+
+        .goods-image-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .goods-type-tag {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+        }
+      }
+
+      .goods-info {
+        .goods-name {
+          font-size: 16px;
+          font-weight: 500;
+          color: #1d2129;
+          margin-bottom: 8px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .goods-desc {
+          font-size: 12px;
+          color: #86909c;
+          margin-bottom: 12px;
+          height: 36px;
+          line-height: 18px;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        .goods-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+
+          .goods-price {
+            .price-value {
+              font-size: 20px;
+              font-weight: bold;
+              color: #FF7D00;
+            }
+
+            .price-unit {
+              font-size: 12px;
+              color: #FF7D00;
+              margin-left: 2px;
+            }
+          }
+
+          .goods-stock {
+            font-size: 12px;
+            color: #86909c;
+          }
+        }
+      }
+    }
+  }
+
+  .goods-detail {
+    .goods-detail-image {
+      height: 200px;
+      background: #f2f3f5;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+  }
+
+  .exchange-form {
+    .exchange-goods-info {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      background: #f7f8fa;
+      border-radius: 8px;
+
+      .exchange-goods-image {
+        width: 80px;
+        height: 80px;
+        background: #fff;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .exchange-goods-detail {
+        flex: 1;
+
+        .exchange-goods-name {
+          font-size: 16px;
+          font-weight: 500;
+          margin-bottom: 8px;
+        }
+
+        .exchange-goods-price {
+          font-size: 14px;
+          color: #86909c;
+        }
+      }
+    }
+
+    .exchange-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px dashed #e5e6eb;
+      border-bottom: 1px dashed #e5e6eb;
+      margin-bottom: 16px;
+
+      .total-points {
+        font-size: 20px;
+        font-weight: bold;
+        color: #FF7D00;
+      }
+    }
+
+    .exchange-balance {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+
+      .balance-value {
+        font-weight: 500;
+        color: #00B42A;
+      }
+    }
+  }
+
+  .orders-container {
+    padding-top: 20px;
+
+    .orders-list {
+      .order-card {
+        margin-bottom: 16px;
+
+        .order-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f2f3f5;
+          margin-bottom: 12px;
+
+          .order-info {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #86909c;
+
+            .order-no {
+              font-weight: 500;
+              color: #4e5969;
+            }
+          }
+        }
+
+        .order-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .order-goods {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+
+            .order-goods-image {
+              width: 60px;
+              height: 60px;
+              background: #f2f3f5;
+              border-radius: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .order-goods-info {
+              .order-goods-name {
+                font-size: 15px;
+                font-weight: 500;
+                margin-bottom: 6px;
+              }
+
+              .order-goods-type {
+                font-size: 12px;
+                color: #86909c;
+              }
+            }
+          }
+
+          .order-points {
+            text-align: right;
+
+            .order-points-value {
+              font-size: 18px;
+              font-weight: bold;
+              color: #FF7D00;
+            }
+
+            .order-points-unit {
+              font-size: 12px;
+              color: #FF7D00;
+            }
+          }
+        }
+
+        .order-voucher {
+          margin-top: 12px;
+          padding: 12px;
+          background: #f0f5ff;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .voucher-label {
+            font-size: 13px;
+            color: #4e5969;
+          }
+
+          .voucher-code {
+            font-size: 16px;
+            font-weight: bold;
+            color: #165DFF;
+            letter-spacing: 2px;
+          }
+        }
+
+        .order-receiver {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px dashed #e5e6eb;
+          font-size: 13px;
+          color: #4e5969;
+
+          .receiver-info {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 6px;
+          }
+
+          .receiver-address {
+            color: #86909c;
+          }
+        }
+
+        .order-actions {
+          margin-top: 12px;
+          text-align: right;
+        }
+      }
+    }
+  }
+}
