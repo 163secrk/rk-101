@@ -7,13 +7,15 @@ from django.db import models
 from django.utils import timezone
 from .models import (
     GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord,
-    POINTS_PER_KG_CONFIG, LEVEL_CONFIG, ExchangeGoods, ExchangeOrder
+    POINTS_PER_KG_CONFIG, LEVEL_CONFIG, ExchangeGoods, ExchangeOrder,
+    Achievement, UserAchievement
 )
 from .serializers import (
     GreenPassCodeSerializer, PassCodeVerifySerializer,
     SmartBinSerializer, DeliveryRecordSerializer, DeliveryCreateSerializer,
     PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer,
-    ExchangeGoodsSerializer, ExchangeOrderSerializer, ExchangeCreateSerializer
+    ExchangeGoodsSerializer, ExchangeOrderSerializer, ExchangeCreateSerializer,
+    AchievementSerializer, UserAchievementSerializer
 )
 from rest_framework.permissions import BasePermission
 
@@ -756,4 +758,213 @@ class ExchangeOrderCancelView(APIView):
             'code': 0,
             'message': msg,
             'data': serializer.data
+        })
+
+
+class AchievementListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        all_achievements = Achievement.objects.all().order_by('sort', 'id')
+        user_achievements = UserAchievement.objects.filter(
+            user=request.user
+        ).values_list('achievement_id', flat=True)
+
+        serializer = AchievementSerializer(all_achievements, many=True)
+        data = []
+        for item in serializer.data:
+            item['unlocked'] = item['id'] in user_achievements
+            data.append(item)
+
+        unlocked_count = len(user_achievements)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': data,
+                'total': all_achievements.count(),
+                'unlocked_count': unlocked_count,
+            }
+        })
+
+
+class UserAchievementListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_achievements = UserAchievement.objects.filter(
+            user=request.user
+        ).select_related('achievement').order_by('-unlocked_at')
+
+        serializer = UserAchievementSerializer(user_achievements, many=True)
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': user_achievements.count(),
+            }
+        })
+
+
+class CarbonFootprintTimelineView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        deliveries = DeliveryRecord.objects.filter(
+            user=user, status=1
+        ).order_by('-created_at')
+
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = deliveries.count()
+
+        page_deliveries = deliveries[start:end]
+
+        CO2_FACTOR = {
+            'recyclable': 0.5,
+            'kitchen': 0.3,
+            'hazardous': 0.8,
+            'other': 0.1,
+        }
+
+        timeline = []
+        for d in page_deliveries:
+            co2 = round(d.weight * CO2_FACTOR.get(d.category, 0.1), 2)
+            timeline.append({
+                'id': d.id,
+                'date': d.created_at.strftime('%Y-%m-%d'),
+                'time': d.created_at.strftime('%H:%M'),
+                'category': d.category,
+                'category_name': d.get_category_display(),
+                'weight': d.weight,
+                'co2_reduction': co2,
+                'points_earned': d.points_earned,
+            })
+
+        total_weight = deliveries.aggregate(total=models.Sum('weight'))['total'] or 0
+        total_co2 = sum(
+            round(d.weight * CO2_FACTOR.get(d.category, 0.1), 2)
+            for d in deliveries
+        )
+        total_points = deliveries.aggregate(total=models.Sum('points_earned'))['total'] or 0
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': timeline,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'summary': {
+                    'total_weight': round(total_weight, 2),
+                    'total_co2': round(total_co2, 2),
+                    'total_points': total_points,
+                    'total_deliveries': total,
+                    'trees_equivalent': round(total_co2 / 18.0, 1),
+                }
+            }
+        })
+
+
+class CommunityDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = timezone.now().date()
+        today_start = timezone.make_aware(
+            timezone.datetime.combine(today, timezone.datetime.min.time())
+        )
+        today_end = timezone.make_aware(
+            timezone.datetime.combine(today, timezone.datetime.max.time())
+        )
+
+        CO2_FACTOR = {
+            'recyclable': 0.5,
+            'kitchen': 0.3,
+            'hazardous': 0.8,
+            'other': 0.1,
+        }
+
+        today_deliveries = DeliveryRecord.objects.filter(
+            status=1, created_at__range=(today_start, today_end)
+        )
+
+        today_weight = today_deliveries.aggregate(
+            total=models.Sum('weight')
+        )['total'] or 0
+
+        today_co2 = 0
+        for d in today_deliveries:
+            today_co2 += d.weight * CO2_FACTOR.get(d.category, 0.1)
+
+        today_points = today_deliveries.aggregate(
+            total=models.Sum('points_earned')
+        )['total'] or 0
+
+        today_people = today_deliveries.values('user_id').distinct().count()
+
+        building_ranking = (
+            PointAccount.objects
+            .filter(user__role='resident')
+            .exclude(user__building__isnull=True)
+            .exclude(user__building='')
+            .values('user__building')
+            .annotate(
+                total_points=models.Sum('total_earned'),
+                user_count=models.Count('user_id')
+            )
+            .order_by('-total_points')[:20]
+        )
+
+        ranking_list = []
+        for idx, item in enumerate(building_ranking, 1):
+            ranking_list.append({
+                'rank': idx,
+                'building': item['user__building'],
+                'total_points': item['total_points'],
+                'user_count': item['user_count'],
+                'avg_points': round(item['total_points'] / max(item['user_count'], 1), 1),
+            })
+
+        category_data = {}
+        for cat_key, cat_label in DeliveryRecord.CATEGORY_CHOICES:
+            cat_weight = today_deliveries.filter(
+                category=cat_key
+            ).aggregate(total=models.Sum('weight'))['total'] or 0
+            category_data[cat_key] = {
+                'name': cat_label,
+                'weight': round(cat_weight, 2),
+                'co2': round(cat_weight * CO2_FACTOR.get(cat_key, 0.1), 2),
+            }
+
+        all_deliveries = DeliveryRecord.objects.filter(status=1)
+        total_co2_all = sum(
+            d.weight * CO2_FACTOR.get(d.category, 0.1) for d in all_deliveries
+        )
+        total_weight_all = all_deliveries.aggregate(
+            total=models.Sum('weight')
+        )['total'] or 0
+
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'today': {
+                    'weight': round(today_weight, 2),
+                    'co2_reduction': round(today_co2, 2),
+                    'points': today_points,
+                    'people': today_people,
+                },
+                'total': {
+                    'weight': round(total_weight_all, 2),
+                    'co2_reduction': round(total_co2_all, 2),
+                },
+                'building_ranking': ranking_list,
+                'category_breakdown': category_data,
+            }
         })

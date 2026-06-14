@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     GreenPassCode, PointAccount, PointRecord, DeliveryRecord, SmartBin,
-    ExchangeGoods, ExchangeOrder
+    ExchangeGoods, ExchangeOrder, Achievement, UserAchievement
 )
 
 
@@ -265,3 +265,30 @@ class ExchangeCreateSerializer(serializers.Serializer):
 
         attrs['goods'] = goods
         return attrs
+
+
+class AchievementSerializer(serializers.ModelSerializer):
+    category_name = serializers.SerializerMethodField()
+    rarity_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Achievement
+        fields = '__all__'
+
+    def get_category_name(self, obj):
+        return obj.get_category_display()
+
+    def get_rarity_name(self, obj):
+        rarity_map = {1: '普通', 2: '精良', 3: '稀有', 4: '史诗', 5: '传说'}
+        return rarity_map.get(obj.rarity, '普通')
+
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement', 'unlocked_at', 'is_new', 'achievement_detail']
+
+    def get_achievement_detail(self, obj):
+        return AchievementSerializer(obj.achievement).data

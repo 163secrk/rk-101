@@ -16,6 +16,7 @@ import {
   IconMenuUnfold,
   IconQrcode,
   IconStorage,
+  IconDashboard,
 } from '@arco-design/web-react/icon'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Message } from '@arco-design/web-react'
@@ -34,6 +35,7 @@ const menuIconMap = {
   bins: IconStorage,
   exchange: IconGift,
   achievement: IconTrophy,
+  community: IconDashboard,
   inspection: IconFile,
   profile: IconUser,
 }
@@ -46,12 +48,14 @@ const roleMenus = {
     { key: 'points', name: '积分中心' },
     { key: 'exchange', name: '兑换商城' },
     { key: 'achievement', name: '绿色成就' },
+    { key: 'community', name: '社区大屏' },
     { key: 'profile', name: '个人中心' },
   ],
   inspector: [
     { key: 'dashboard', name: '数据大盘' },
     { key: 'verify', name: '通行码验证' },
     { key: 'delivery', name: '投放管理' },
+    { key: 'community', name: '社区大屏' },
     { key: 'inspection', name: '巡检上报' },
     { key: 'profile', name: '个人中心' },
   ],
@@ -59,6 +63,7 @@ const roleMenus = {
     { key: 'dashboard', name: '数据大盘' },
     { key: 'verify', name: '通行码验证' },
     { key: 'delivery', name: '投放管理' },
+    { key: 'community', name: '社区大屏' },
     { key: 'profile', name: '个人中心' },
   ],
   admin: [
@@ -70,6 +75,7 @@ const roleMenus = {
     { key: 'points', name: '积分中心' },
     { key: 'exchange', name: '兑换商城' },
     { key: 'achievement', name: '绿色成就' },
+    { key: 'community', name: '社区大屏' },
     { key: 'inspection', name: '巡检上报' },
     { key: 'profile', name: '个人中心' },
   ],

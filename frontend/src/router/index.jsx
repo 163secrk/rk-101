@@ -13,6 +13,7 @@ const Points = lazy(() => import('../pages/Points'))
 const BinManagement = lazy(() => import('../pages/BinManagement'))
 const Exchange = lazy(() => import('../pages/Exchange'))
 const Achievement = lazy(() => import('../pages/Achievement'))
+const CommunityDashboard = lazy(() => import('../pages/CommunityDashboard'))
 const Inspection = lazy(() => import('../pages/Inspection'))
 const Profile = lazy(() => import('../pages/Profile'))
 const GreenPassCode = lazy(() => import('../pages/GreenPassCode'))
@@ -43,6 +44,7 @@ export default function AppRouter() {
           <Route path="points" element={<Points />} />
           <Route path="exchange" element={<Exchange />} />
           <Route path="achievement" element={<Achievement />} />
+          <Route path="community" element={<CommunityDashboard />} />
           <Route path="inspection" element={<Inspection />} />
           <Route path="profile" element={<Profile />} />
         </Route>

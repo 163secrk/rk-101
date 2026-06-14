@@ -41,3 +41,11 @@ export const getExchangeOrders = (params) => request.get('/points/exchange/order
 export const getExchangeOrderDetail = (id) => request.get(`/points/exchange/orders/${id}/`)
 
 export const cancelExchangeOrder = (id) => request.post(`/points/exchange/orders/${id}/cancel/`)
+
+export const getAchievements = () => request.get('/points/achievements/')
+
+export const getUserAchievements = () => request.get('/points/achievements/mine/')
+
+export const getCarbonFootprint = (params) => request.get('/points/carbon-footprint/', { params })
+
+export const getCommunityDashboard = () => request.get('/points/community/dashboard/')
