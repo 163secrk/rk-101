@@ -14,6 +14,8 @@ const Exchange = lazy(() => import('../pages/Exchange'))
 const Achievement = lazy(() => import('../pages/Achievement'))
 const Inspection = lazy(() => import('../pages/Inspection'))
 const Profile = lazy(() => import('../pages/Profile'))
+const GreenPassCode = lazy(() => import('../pages/GreenPassCode'))
+const PassCodeVerify = lazy(() => import('../pages/PassCodeVerify'))
 const NotFound = lazy(() => import('../pages/NotFound'))
 
 function Loading() {
@@ -34,6 +36,8 @@ export default function AppRouter() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="delivery" element={<Delivery />} />
+          <Route path="passcode" element={<GreenPassCode />} />
+          <Route path="verify" element={<PassCodeVerify />} />
           <Route path="points" element={<Points />} />
           <Route path="exchange" element={<Exchange />} />
           <Route path="achievement" element={<Achievement />} />

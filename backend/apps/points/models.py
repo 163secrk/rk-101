@@ -1,4 +1,125 @@
+import uuid
+import hashlib
+import hmac
+import base64
+import json
+from datetime import datetime, timedelta
 from django.db import models
+from django.conf import settings
+
+
+class GreenPassCode(models.Model):
+    STATUS_CHOICES = [
+        (0, '未使用'),
+        (1, '已使用'),
+        (2, '已过期'),
+        (3, '已作废'),
+    ]
+
+    code_id = models.UUIDField(default=uuid.uuid4, unique=True, verbose_name='通行码ID')
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='pass_codes', verbose_name='用户')
+    encrypted_data = models.TextField(verbose_name='加密数据')
+    signature = models.CharField(max_length=256, verbose_name='签名')
+    expires_at = models.DateTimeField(verbose_name='过期时间')
+    status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, verbose_name='状态')
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name='使用时间')
+    used_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='verified_codes', verbose_name='验证人')
+    bin_code = models.CharField(max_length=50, blank=True, default='', verbose_name='关联投放点编号')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'gt_green_pass_code'
+        verbose_name = '绿色通行码'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.nickname} - {self.code_id}'
+
+    @classmethod
+    def generate_code(cls, user, valid_minutes=5):
+        code_id = uuid.uuid4()
+        now = datetime.now()
+        expires_at = now + timedelta(minutes=valid_minutes)
+
+        payload = {
+            'code_id': str(code_id),
+            'user_id': user.id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'role': user.role,
+            'identity_code': user.identity_code or '',
+            'community': user.community or '',
+            'created_at': now.isoformat(),
+            'expires_at': expires_at.isoformat(),
+            'nonce': uuid.uuid4().hex[:8],
+        }
+
+        payload_json = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
+        encrypted = base64.urlsafe_b64encode(payload_json.encode('utf-8')).decode('utf-8')
+
+        secret_key = settings.SECRET_KEY.encode('utf-8')
+        signature = hmac.new(secret_key, encrypted.encode('utf-8'), hashlib.sha256).hexdigest()
+
+        pass_code = cls.objects.create(
+            code_id=code_id,
+            user=user,
+            encrypted_data=encrypted,
+            signature=signature,
+            expires_at=expires_at,
+        )
+
+        qr_content = f'{encrypted}.{signature}'
+        return pass_code, qr_content
+
+    @classmethod
+    def verify_code(cls, qr_content, verifier=None):
+        try:
+            parts = qr_content.split('.')
+            if len(parts) != 2:
+                return False, '通行码格式错误'
+
+            encrypted_data, signature = parts
+
+            secret_key = settings.SECRET_KEY.encode('utf-8')
+            expected_signature = hmac.new(secret_key, encrypted_data.encode('utf-8'), hashlib.sha256).hexdigest()
+
+            if not hmac.compare_digest(expected_signature, signature):
+                return False, '通行码签名验证失败'
+
+            payload_json = base64.urlsafe_b64decode(encrypted_data.encode('utf-8')).decode('utf-8')
+            payload = json.loads(payload_json)
+
+            expires_at = datetime.fromisoformat(payload['expires_at'])
+            if datetime.now() > expires_at:
+                return False, '通行码已过期'
+
+            try:
+                pass_code = cls.objects.get(code_id=payload['code_id'])
+            except cls.DoesNotExist:
+                return False, '通行码不存在'
+
+            if pass_code.status != 0:
+                status_map = {1: '已使用', 2: '已过期', 3: '已作废'}
+                return False, f'通行码{status_map.get(pass_code.status, "状态异常")}'
+
+            if pass_code.user_id != payload['user_id']:
+                return False, '通行码用户信息不匹配'
+
+            pass_code.status = 1
+            pass_code.used_at = datetime.now()
+            if verifier:
+                pass_code.used_by = verifier
+            pass_code.save()
+
+            return True, {
+                'pass_code': pass_code,
+                'payload': payload,
+            }
+
+        except Exception as e:
+            return False, f'验证失败: {str(e)}'
 
 
 class PointAccount(models.Model):

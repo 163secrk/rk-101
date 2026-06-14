@@ -11,11 +11,49 @@ const MenuItem = Menu.Item
 const menuIconMap = {
   dashboard: '📊',
   delivery: '♻️',
+  passcode: '🎫',
+  verify: '🔍',
   points: '💰',
   exchange: '🎁',
   achievement: '🏆',
-  inspection: '🔍',
+  inspection: '📋',
   profile: '👤',
+}
+
+const roleMenus = {
+  resident: [
+    { key: 'dashboard', name: '数据大盘' },
+    { key: 'passcode', name: '绿色通行码' },
+    { key: 'delivery', name: '投放管理' },
+    { key: 'points', name: '积分中心' },
+    { key: 'exchange', name: '兑换商城' },
+    { key: 'achievement', name: '绿色成就' },
+    { key: 'profile', name: '个人中心' },
+  ],
+  inspector: [
+    { key: 'dashboard', name: '数据大盘' },
+    { key: 'verify', name: '通行码验证' },
+    { key: 'delivery', name: '投放管理' },
+    { key: 'inspection', name: '巡检上报' },
+    { key: 'profile', name: '个人中心' },
+  ],
+  collector: [
+    { key: 'dashboard', name: '数据大盘' },
+    { key: 'verify', name: '通行码验证' },
+    { key: 'delivery', name: '投放管理' },
+    { key: 'profile', name: '个人中心' },
+  ],
+  admin: [
+    { key: 'dashboard', name: '数据大盘' },
+    { key: 'passcode', name: '绿色通行码' },
+    { key: 'verify', name: '通行码验证' },
+    { key: 'delivery', name: '投放管理' },
+    { key: 'points', name: '积分中心' },
+    { key: 'exchange', name: '兑换商城' },
+    { key: 'achievement', name: '绿色成就' },
+    { key: 'inspection', name: '巡检上报' },
+    { key: 'profile', name: '个人中心' },
+  ],
 }
 
 export default function BasicLayout() {
@@ -85,34 +123,12 @@ export default function BasicLayout() {
           onClickMenuItem={(key) => navigate(`/${key}`)}
           style={{ width: '100%' }}
         >
-          <MenuItem key="dashboard">
-            <span className="menu-icon">{menuIconMap.dashboard}</span>
-            <span>数据大盘</span>
-          </MenuItem>
-          <MenuItem key="delivery">
-            <span className="menu-icon">{menuIconMap.delivery}</span>
-            <span>投放管理</span>
-          </MenuItem>
-          <MenuItem key="points">
-            <span className="menu-icon">{menuIconMap.points}</span>
-            <span>积分中心</span>
-          </MenuItem>
-          <MenuItem key="exchange">
-            <span className="menu-icon">{menuIconMap.exchange}</span>
-            <span>兑换商城</span>
-          </MenuItem>
-          <MenuItem key="achievement">
-            <span className="menu-icon">{menuIconMap.achievement}</span>
-            <span>绿色成就</span>
-          </MenuItem>
-          <MenuItem key="inspection">
-            <span className="menu-icon">{menuIconMap.inspection}</span>
-            <span>巡检上报</span>
-          </MenuItem>
-          <MenuItem key="profile">
-            <span className="menu-icon">{menuIconMap.profile}</span>
-            <span>个人中心</span>
-          </MenuItem>
+          {(roleMenus[userInfo.role] || roleMenus.resident).map((item) => (
+            <MenuItem key={item.key}>
+              <span className="menu-icon">{menuIconMap[item.key]}</span>
+              <span>{item.name}</span>
+            </MenuItem>
+          ))}
         </Menu>
       </Sider>
       <Layout className="layout-main">
@@ -133,7 +149,12 @@ export default function BasicLayout() {
                 <Avatar size={36} style={{ backgroundColor: '#00B42A' }}>
                   {userInfo.nickname ? userInfo.nickname.charAt(0) : '🌱'}
                 </Avatar>
-                <span className="username">{userInfo.nickname || '用户'}</span>
+                <div className="user-info-text">
+                  <span className="username">{userInfo.nickname || '用户'}</span>
+                  <span className="user-role">
+                    {userInfo.role === 'admin' ? '管理员' : userInfo.role === 'collector' ? '收集员' : userInfo.role === 'inspector' ? '巡检员' : '居民'}
+                  </span>
+                </div>
               </div>
             </Dropdown>
           </div>
