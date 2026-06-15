@@ -57,3 +57,11 @@ export const getInspectionDetail = (id) => request.get(`/points/inspection/${id}
 export const createInspection = (data) => request.post('/points/inspection/create/', data)
 
 export const handleInspection = (id, data) => request.post(`/points/inspection/${id}/handle/`, data)
+
+export const getNotifications = (params) => request.get('/points/notifications/', { params })
+
+export const getNotificationUnreadCount = () => request.get('/points/notifications/unread-count/')
+
+export const markNotificationRead = (id) => request.post(`/points/notifications/${id}/read/`)
+
+export const markAllNotificationsRead = () => request.post('/points/notifications/read-all/')

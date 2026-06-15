@@ -632,6 +632,37 @@ class UserAchievement(models.Model):
         return f'{self.user.nickname} - {self.achievement.name}'
 
 
+class Notification(models.Model):
+    TYPE_CHOICES = [
+        ('delivery_approved', '投递审核通过'),
+        ('delivery_rejected', '投递审核驳回'),
+        ('exchange_success', '兑换成功'),
+        ('exchange_shipped', '兑换已发货'),
+        ('exchange_completed', '兑换已完成'),
+        ('exchange_cancelled', '兑换已取消'),
+        ('inspection_resolved', '巡检已处理'),
+        ('inspection_rejected', '巡检已驳回'),
+    ]
+
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='notifications', verbose_name='接收用户')
+    type = models.CharField(max_length=30, choices=TYPE_CHOICES, verbose_name='通知类型')
+    title = models.CharField(max_length=100, verbose_name='通知标题')
+    content = models.CharField(max_length=500, verbose_name='通知内容')
+    is_read = models.BooleanField(default=False, verbose_name='是否已读')
+    related_id = models.CharField(max_length=50, blank=True, default='', verbose_name='关联业务ID')
+    extra = models.JSONField(default=dict, blank=True, verbose_name='扩展数据')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'gt_notification'
+        verbose_name = '消息通知'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.nickname} - {self.title}'
+
+
 class InspectionReport(models.Model):
     TYPE_CHOICES = [
         ('wrong_category', '分类错误'),

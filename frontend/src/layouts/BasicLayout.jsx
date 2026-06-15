@@ -21,6 +21,7 @@ import {
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Message } from '@arco-design/web-react'
 import { logout as logoutApi } from '../api/user'
+import NotificationBell from '../components/NotificationBell'
 import './BasicLayout.less'
 
 const { Sider, Header, Content } = Layout
@@ -168,6 +169,7 @@ export default function BasicLayout() {
             className="collapse-btn"
           />
           <div className="header-right">
+            <NotificationBell />
             <Dropdown
               droplist={userDropdown}
               position="br"

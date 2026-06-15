@@ -8,7 +8,7 @@ from django.utils import timezone
 from .models import (
     GreenPassCode, SmartBin, DeliveryRecord, PointAccount, PointRecord,
     POINTS_PER_KG_CONFIG, LEVEL_CONFIG, ExchangeGoods, ExchangeOrder,
-    Achievement, UserAchievement, InspectionReport
+    Achievement, UserAchievement, InspectionReport, Notification
 )
 from .serializers import (
     GreenPassCodeSerializer, PassCodeVerifySerializer,
@@ -16,7 +16,8 @@ from .serializers import (
     PointAccountSerializer, PointRecordSerializer, DeliveryAuditSerializer,
     ExchangeGoodsSerializer, ExchangeOrderSerializer, ExchangeCreateSerializer,
     AchievementSerializer, UserAchievementSerializer,
-    InspectionReportSerializer, InspectionCreateSerializer, InspectionHandleSerializer
+    InspectionReportSerializer, InspectionCreateSerializer, InspectionHandleSerializer,
+    NotificationSerializer
 )
 from rest_framework.permissions import BasePermission
 
@@ -434,6 +435,15 @@ class DeliveryAuditView(APIView):
 
         if action == 'approve':
             success, msg = delivery.approve(inspector=request.user, remark=remark)
+            if success:
+                Notification.objects.create(
+                    user=delivery.user,
+                    type='delivery_approved',
+                    title='投递审核通过',
+                    content=f'您投放的{delivery.get_category_display()}{delivery.weight}kg已审核通过，获得{delivery.points_earned}积分',
+                    related_id=str(delivery.id),
+                    extra={'delivery_id': delivery.id, 'points': delivery.points_earned},
+                )
             if not success:
                 return Response({
                     'code': 400,
@@ -442,6 +452,15 @@ class DeliveryAuditView(APIView):
                 })
         elif action == 'reject':
             success, msg = delivery.reject(inspector=request.user, remark=remark or '分类不符合要求')
+            if success:
+                Notification.objects.create(
+                    user=delivery.user,
+                    type='delivery_rejected',
+                    title='投递审核驳回',
+                    content=f'您投放的{delivery.get_category_display()}{delivery.weight}kg未通过审核，原因：{remark or "分类不符合要求"}',
+                    related_id=str(delivery.id),
+                    extra={'delivery_id': delivery.id},
+                )
             if not success:
                 return Response({
                     'code': 400,
@@ -649,6 +668,15 @@ class ExchangeCreateView(APIView):
                 'message': str(e),
                 'data': None
             })
+
+        Notification.objects.create(
+            user=request.user,
+            type='exchange_success',
+            title='兑换成功',
+            content=f'您已成功兑换「{goods.name}」x{quantity}，消耗{order.total_points}积分',
+            related_id=str(order.id),
+            extra={'order_id': order.id, 'order_no': order.order_no, 'goods_name': goods.name},
+        )
 
         result_serializer = ExchangeOrderSerializer(order)
         return Response({
@@ -1128,8 +1156,26 @@ class InspectionReportHandleView(APIView):
             success, msg = report.start_handle(handler=request.user)
         elif action == 'resolve':
             success, msg = report.resolve(handler=request.user, remark=remark, points_reward=points_reward)
+            if success:
+                Notification.objects.create(
+                    user=report.reporter,
+                    type='inspection_resolved',
+                    title='巡检上报已处理',
+                    content=f'您上报的{report.get_type_display()}异常已处理完成{f"，获得{points_reward}积分奖励" if points_reward > 0 else ""}。处理备注：{remark or "无"}',
+                    related_id=str(report.id),
+                    extra={'report_id': report.id, 'points_reward': points_reward},
+                )
         elif action == 'reject':
             success, msg = report.reject(handler=request.user, remark=remark or '异常描述不清晰或证据不足')
+            if success:
+                Notification.objects.create(
+                    user=report.reporter,
+                    type='inspection_rejected',
+                    title='巡检上报已驳回',
+                    content=f'您上报的{report.get_type_display()}异常已被驳回，原因：{remark or "异常描述不清晰或证据不足"}',
+                    related_id=str(report.id),
+                    extra={'report_id': report.id},
+                )
         else:
             return Response({
                 'code': 400,
@@ -1149,4 +1195,87 @@ class InspectionReportHandleView(APIView):
             'code': 0,
             'message': msg,
             'data': result_serializer.data
+        })
+
+
+class NotificationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        queryset = Notification.objects.filter(user=self.request.user)
+        type_filter = self.request.query_params.get('type')
+        if type_filter:
+            queryset = queryset.filter(type=type_filter)
+        is_read = self.request.query_params.get('is_read')
+        if is_read is not None:
+            queryset = queryset.filter(is_read=is_read.lower() == 'true')
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        total = queryset.count()
+        notifications = queryset[start:end]
+        serializer = self.get_serializer(notifications, many=True)
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {
+                'list': serializer.data,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'unread_count': unread_count,
+            }
+        })
+
+
+class NotificationUnreadCountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': {'unread_count': count}
+        })
+
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, user=request.user)
+        except Notification.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '通知不存在',
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+        notification.is_read = True
+        notification.save()
+        serializer = NotificationSerializer(notification)
+        return Response({
+            'code': 0,
+            'message': '已标为已读',
+            'data': serializer.data
+        })
+
+
+class NotificationMarkAllReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({
+            'code': 0,
+            'message': f'已将{count}条通知标为已读',
+            'data': {'count': count}
         })

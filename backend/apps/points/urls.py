@@ -11,7 +11,9 @@ from .views import (
     AchievementListView, UserAchievementListView,
     CarbonFootprintTimelineView, CommunityDashboardView,
     InspectionReportListView, InspectionReportCreateView,
-    InspectionReportDetailView, InspectionReportHandleView
+    InspectionReportDetailView, InspectionReportHandleView,
+    NotificationListView, NotificationUnreadCountView,
+    NotificationMarkReadView, NotificationMarkAllReadView
 )
 
 urlpatterns = [
@@ -43,4 +45,8 @@ urlpatterns = [
     path('inspection/create/', InspectionReportCreateView.as_view(), name='inspection-create'),
     path('inspection/<int:pk>/', InspectionReportDetailView.as_view(), name='inspection-detail'),
     path('inspection/<int:pk>/handle/', InspectionReportHandleView.as_view(), name='inspection-handle'),
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/unread-count/', NotificationUnreadCountView.as_view(), name='notification-unread-count'),
+    path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
+    path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
 ]

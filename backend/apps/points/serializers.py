@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     GreenPassCode, PointAccount, PointRecord, DeliveryRecord, SmartBin,
-    ExchangeGoods, ExchangeOrder, Achievement, UserAchievement, InspectionReport
+    ExchangeGoods, ExchangeOrder, Achievement, UserAchievement, InspectionReport,
+    Notification
 )
 
 
@@ -429,3 +430,15 @@ class InspectionHandleSerializer(serializers.Serializer):
     })
     remark = serializers.CharField(required=False, allow_blank=True, default='', max_length=1000)
     points_reward = serializers.IntegerField(required=False, default=0, min_value=0, max_value=10000)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    type_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'type', 'type_name', 'title', 'content', 'is_read', 'related_id', 'extra', 'created_at']
+        read_only_fields = ['id', 'type', 'type_name', 'title', 'content', 'is_read', 'related_id', 'extra', 'created_at']
+
+    def get_type_name(self, obj):
+        return obj.get_type_display()
