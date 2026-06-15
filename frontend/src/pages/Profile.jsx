@@ -21,6 +21,7 @@ export default function Profile() {
   const [codesLoading, setCodesLoading] = useState(false)
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [createForm] = Form.useForm()
+  const [submitting, setSubmitting] = useState(false)
 
   const isAdmin = userInfo.role === 'admin'
 
@@ -85,9 +86,9 @@ export default function Profile() {
   }
 
   const handleCreateInvitation = async () => {
-    const values = await createForm.validate()
-    setLoading(true)
     try {
+      const values = await createForm.validate()
+      setSubmitting(true)
       await createInvitationCode({
         code: values.code,
         role: values.role,
@@ -97,8 +98,10 @@ export default function Profile() {
       setCreateModalVisible(false)
       createForm.resetFields()
       loadInvitationCodes()
+    } catch (e) {
+      if (e?.errorFields) return
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -294,7 +297,7 @@ export default function Profile() {
           setCreateModalVisible(false)
           createForm.resetFields()
         }}
-        confirmLoading={loading}
+        confirmLoading={submitting}
       >
         <Form form={createForm} layout="vertical">
           <FormItem

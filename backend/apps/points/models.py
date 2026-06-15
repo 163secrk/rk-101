@@ -699,6 +699,9 @@ class InspectionReport(models.Model):
                     remark=f'巡检异常上报奖励'
                 )
                 self.point_record = point_record
+            if self.bin and self.bin.status in [2, 3]:
+                self.bin.status = 1
+                self.bin.save()
             self.save()
         return True, '处理完成'
 
@@ -709,5 +712,8 @@ class InspectionReport(models.Model):
         self.handler = handler
         self.handle_remark = remark
         self.handled_at = timezone.now()
+        if self.bin and self.bin.status in [2, 3]:
+            self.bin.status = 1
+            self.bin.save()
         self.save()
         return True, '已驳回'

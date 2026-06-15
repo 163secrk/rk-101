@@ -5,6 +5,7 @@ from django.utils import timezone
 
 class InvitationCode(models.Model):
     ROLE_CHOICES = [
+        ('collector', '收集员'),
         ('inspector', '巡检员'),
         ('admin', '管理员'),
     ]

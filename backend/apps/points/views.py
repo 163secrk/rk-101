@@ -1054,6 +1054,14 @@ class InspectionReportCreateView(APIView):
             report.bin = data['delivery_obj'].bin
             report.save()
 
+        if report.bin:
+            if data['type'] == 'bin_damage':
+                report.bin.status = 3
+                report.bin.save()
+            elif data['type'] in ['bin_full', 'hygiene']:
+                report.bin.status = 2
+                report.bin.save()
+
         result_serializer = InspectionReportSerializer(report)
         return Response({
             'code': 0,
